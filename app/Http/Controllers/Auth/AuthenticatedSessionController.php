@@ -1,8 +1,8 @@
 <?php
 
 namespace App\Http\Controllers\Auth;
-
 use App\Http\Controllers\Controller;
+use App\Providers\RouteServiceProvider;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,17 +33,39 @@ class AuthenticatedSessionController extends Controller
     //     return redirect('/home');
     // }
     //untuk online
+    // public function store(Request $request)
+    // {
+    //     // login seperti biasa
+    //     $this->authenticate($request);
+
+    //     $user = Auth::user();
+    //     $user->update(['is_online' => true]);
+        
+    //     return redirect()->intended(RouteServiceProvider::HOME);
+    // }
+
     public function store(Request $request)
     {
-        // login seperti biasa
-        $this->authenticate($request);
+        $credentials = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        // Coba login
+        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            throw ValidationException::withMessages([
+                'email' => __('Email atau password salah.'),
+            ]);
+        }
+
+        // Tandai user sebagai online
+        $request->session()->regenerate();
 
         $user = Auth::user();
         $user->update(['is_online' => true]);
-        
+
         return redirect()->intended(RouteServiceProvider::HOME);
     }
-
 
     /**
      * Destroy an authenticated session.
