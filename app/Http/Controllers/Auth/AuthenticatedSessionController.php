@@ -22,29 +22,54 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    // public function store(LoginRequest $request): RedirectResponse
+    // {
+    //     $request->authenticate();
+
+    //     $request->session()->regenerate();
+
+    //     // return redirect()->intended(route('dashboard', absolute: false));
+    //     // return redirect()->intended(RouteServiceProvider::HOME);
+    //     return redirect('/home');
+    // }
+    //untuk online
+    public function store(Request $request)
     {
-        $request->authenticate();
+        // login seperti biasa
+        $this->authenticate($request);
 
-        $request->session()->regenerate();
-
-        // return redirect()->intended(route('dashboard', absolute: false));
-        // return redirect()->intended(RouteServiceProvider::HOME);
-        return redirect('/home');
-
+        $user = Auth::user();
+        $user->update(['is_online' => true]);
+        
+        return redirect()->intended(RouteServiceProvider::HOME);
     }
+
 
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+    // public function destroy(Request $request): RedirectResponse
+    // {
+    //     Auth::guard('web')->logout();
+
+    //     $request->session()->invalidate();
+
+    //     $request->session()->regenerateToken();
+
+    //     return redirect('/');
+    // }
+
+    public function destroy(Request $request)
     {
+        $user = Auth::user();
+        $user->update(['is_online' => false]);
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/');
     }
+
 }
