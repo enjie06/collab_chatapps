@@ -8,7 +8,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-<<<<<<< HEAD
+// Dashboard & Profile (default Laravel Breeze)
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -19,8 +19,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
-=======
 // Semua route chat dilindungi login
 Route::middleware(['auth'])->group(function () {
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
@@ -31,4 +29,5 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/create', [ChatController::class, 'createConversation'])->name('chat.create');
     Route::post('/chat/broadcast', [ChatController::class, 'createBroadcast'])->name('chat.broadcast');
 });
->>>>>>> 501378dfd4c3b76db1b4c61b1037040ffa0c2aca
+
+require __DIR__.'/auth.php';
