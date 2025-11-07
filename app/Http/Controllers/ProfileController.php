@@ -64,4 +64,21 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    public function destroyAvatar(Request $request)
+    {
+        $user = $request->user();
+
+        // Hapus file avatar jika ada
+        if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
+            \Storage::disk('public')->delete($user->avatar);
+        }
+
+        // Set avatar jadi null (biar kembali ke default)
+        $user->avatar = null;
+        $user->save();
+
+        return redirect()->route('profile.edit')->with('status', 'Avatar berhasil dihapus dan diganti ke default.');
+    }
+
 }
