@@ -1,38 +1,27 @@
-@extends('layouts.app')
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800">
+            Percakapan Anda
+        </h2>
+    </x-slot>
 
-@section('content')
-<style>
-.chat-list {
-    max-width: 600px;
-    margin: 30px auto;
-}
+    <div class="max-w-3xl mx-auto mt-6">
+        @forelse($conversations as $conversation)
+            <a href="{{ route('chat.show', $conversation->id) }}"
+               class="block p-4 mb-3 rounded-lg border bg-white hover:bg-purple-50 transition">
 
-.chat-item {
-    padding: 12px 16px;
-    margin-bottom: 10px;
-    background: #F8F6FF;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    cursor: pointer;
-}
-.chat-item:hover {
-    background: #EEDCFF;
-}
-</style>
+                <strong class="text-purple-700">
+                    {{ $conversation->title ?? 'Chat Tanpa Judul' }}
+                </strong>
 
-<h2 style="text-align:center; margin-top: 20px;">Percakapan Anda</h2>
-
-<div class="chat-list">
-    @forelse($conversations as $conversation)
-        <a href="{{ route('chat.show', $conversation->id) }}" style="text-decoration:none; color:inherit;">
-            <div class="chat-item">
-                <strong>{{ $conversation->title ?? 'Chat Tanpa Judul' }}</strong><br>
-                <small>{{ $conversation->users->pluck('name')->join(', ') }}</small>
-            </div>
-        </a>
-    @empty
-        <p style="text-align:center; margin-top:20px;">Belum ada percakapan 😿</p>
-    @endforelse
-</div>
-
-@endsection
+                <div class="text-sm text-gray-500">
+                    {{ $conversation->users->pluck('name')->join(', ') }}
+                </div>
+            </a>
+        @empty
+            <p class="text-center text-gray-600">
+                Belum ada percakapan 😿
+            </p>
+        @endforelse
+    </div>
+</x-app-layout>

@@ -1,112 +1,37 @@
-@extends('layouts.app')
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800">
+            {{ $conversation->title ?? 'Percakapan' }}
+        </h2>
+    </x-slot>
 
-@section('content')
-<style>
-    .chat-container {
-        display: flex;
-        height: 80vh;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        overflow: hidden;
-    }
+    <div class="max-w-3xl mx-auto mt-6">
+        <div class="bg-white p-4 rounded-lg border max-h-[60vh] overflow-y-auto">
+            @foreach($conversation->messages as $message)
+                <div class="mb-3">
+                    <strong class="text-purple-700">{{ $message->user->name }}</strong>
+                    <p>{{ $message->content }}</p>
+                    <small class="text-gray-500 text-xs">{{ $message->created_at->format('H:i') }}</small>
+                </div>
+            @endforeach
+        </div>
 
-    .chat-header {
-        padding: 12px;
-        background: #CD1AFF;
-        color: white;
-        font-weight: bold;
-        text-align: center;
-    }
+        <form action="{{ route('chat.send', $conversation->id) }}" method="POST" class="mt-4 flex">
+            @csrf
+            <input type="text" name="content" class="flex-1 border rounded-l-lg p-2"
+                   placeholder="Tulis pesan..." required>
 
-    .messages-box {
-        flex: 1;
-        padding: 15px;
-        overflow-y: auto;
-        background: #F8F6FF;
-    }
-
-    .bubble {
-        margin-bottom: 10px;
-        padding: 10px 14px;
-        border-radius: 12px;
-        max-width: 65%;
-        font-size: 15px;
-    }
-
-    .me {
-        background: #CD1AFF;
-        color: white;
-        margin-left: auto;
-        text-align: right;
-    }
-
-    .other {
-        background: white;
-        border: 1px solid #ddd;
-        text-align: left;
-    }
-
-    .chat-input {
-        display: flex;
-        padding: 12px;
-        background: white;
-        border-top: 1px solid #ddd;
-    }
-
-    .chat-input input {
-        flex: 1;
-        border-radius: 6px;
-        border: 1px solid #ccc;
-        padding: 10px;
-        margin-right: 8px;
-    }
-
-    .chat-input button {
-        background: #CD1AFF;
-        color: white;
-        border: none;
-        padding: 10px 18px;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-</style>
-
-<div class="chat-header">
-    {{ $conversation->title ?? 'Percakapan' }}
-</div>
-
-<div class="chat-container">
-    <div id="messages" class="messages-box">
-        @foreach($conversation->messages as $msg)
-            <div class="bubble {{ $msg->user_id == auth()->id() ? 'me' : 'other' }}">
-                {{ $msg->content }}
-            </div>
-        @endforeach
+            <button class="bg-purple-600 text-white px-4 rounded-r-lg hover:bg-purple-700">
+                Kirim
+            </button>
+        </form>
     </div>
-</div>
 
-<form action="{{ route('chat.send', $conversation->id) }}" method="POST" class="chat-input">
-    @csrf
-    <input type="text" name="content" placeholder="Tulis pesan..." autocomplete="off" required>
-    <button type="submit">Kirim</button>
-</form>
-
-@endsection
-
-@section('scripts')
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 <script>
-    window.Echo.join('conversation.{{ $conversation->id }}')
+    Echo.channel('conversation.{{ $conversation->id }}')
         .listen('MessageSent', (e) => {
-
-            let box = document.getElementById('messages');
-
-            box.innerHTML += `
-            <div class="bubble other">
-                ${e.message.content}
-            </div>`;
-
-            box.scrollTop = box.scrollHeight;
+            window.location.reload();
         });
 </script>
-@endsection
+
+</x-app-layout>
