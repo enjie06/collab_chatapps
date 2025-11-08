@@ -30,4 +30,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/broadcast', [ChatController::class, 'createBroadcast'])->name('chat.broadcast');
 });
 
+Route::get('/debug-session', function () {
+    return config('session.driver') . ' | ' . config('session.connection');
+});
+
 require __DIR__.'/auth.php';
