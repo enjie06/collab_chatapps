@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\FriendController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -17,6 +18,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::delete('/profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
 });
 
 // Semua route chat dilindungi login
@@ -25,13 +28,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/chat/{id}', [ChatController::class, 'show'])->name('chat.show');
     Route::post('/chat/{id}/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 
+    // Menambah teman
+    Route::get('/friends', [\App\Http\Controllers\FriendController::class, 'index'])->name('friends.index');
+    Route::post('/friends/send', [\App\Http\Controllers\FriendController::class, 'sendRequest'])->name('friends.send');
+    Route::post('/friends/accept/{id}', [\App\Http\Controllers\FriendController::class, 'accept'])->name('friends.accept');
+    Route::post('/friends/reject/{id}', [\App\Http\Controllers\FriendController::class, 'reject'])->name('friends.reject');
+    Route::delete('/friends/remove/{userId}', [\App\Http\Controllers\FriendController::class, 'remove'])->name('friends.remove');
+    Route::delete('/friends/clear/{friendshipId}', [\App\Http\Controllers\FriendController::class, 'clearRejected'])->name('friends.clear');
+
     // Tambahan fitur: buat percakapan & broadcast
     Route::post('/chat/create', [ChatController::class, 'createConversation'])->name('chat.create');
     Route::post('/chat/broadcast', [ChatController::class, 'createBroadcast'])->name('chat.broadcast');
-});
-
-Route::get('/debug-session', function () {
-    return config('session.driver') . ' | ' . config('session.connection');
 });
 
 require __DIR__.'/auth.php';

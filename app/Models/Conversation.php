@@ -17,7 +17,7 @@ class Conversation extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'conversation_user')
-                    ->withPivot('role')
+                    ->withPivot('role', 'last_read_message_id')
                     ->withTimestamps();
     }
 
@@ -25,5 +25,10 @@ class Conversation extends Model
     public function messages()
     {
         return $this->hasMany(Message::class);
+    }
+    
+    public function lastReads()
+    {
+        return $this->hasMany(\App\Models\LastRead::class);
     }
 }

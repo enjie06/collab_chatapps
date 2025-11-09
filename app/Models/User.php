@@ -15,6 +15,7 @@ class User extends Authenticatable
         'email',
         'password',
         'avatar',
+        'last_seen_at',
     ];
 
     protected $hidden = [
@@ -24,19 +25,76 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'last_seen_at' => 'datetime',
     ];
 
-    // 🔹 Relasi ke messages
+    // Pesan yang dikirim user ini
     public function messages()
     {
         return $this->hasMany(Message::class);
     }
 
-    // 🔹 Relasi ke conversations (pivot table)
+    // Percakapan yang user ikut
     public function conversations()
     {
         return $this->belongsToMany(Conversation::class, 'conversation_user')
                     ->withPivot('role')
                     ->withTimestamps();
+    }
+
+    // Status online
+    public function getIsOnlineAttribute()
+    {
+        return cache()->has('user-is-online-' . $this->id);
+    }
+
+    // Request yang dia kirim
+    public function sentRequests()
+    {
+        return $this->hasMany(Friendship::class, 'requester_id')
+                    ->where('status', 'pending');
+    }
+
+    // Request yang dia terima
+    public function receivedRequests()
+    {
+        return $this->hasMany(Friendship::class, 'receiver_id')
+                    ->where('status', 'pending');
+    }
+
+    // Permintaan dikirim (pending)
+    public function sentRequestsPending()
+    {
+        return $this->hasMany(Friendship::class, 'requester_id')
+            ->where('status', 'pending')
+            ->with('receiver');
+    }
+
+    // Permintaan diterima (pending)
+    public function receivedRequestsPending()
+    {
+        return $this->hasMany(Friendship::class, 'receiver_id')
+            ->where('status', 'pending')
+            ->with('requester');
+    }
+
+    public function friends()
+    {
+        $friendsAsRequester = $this->belongsToMany(User::class, 'friendships', 'requester_id', 'receiver_id')
+            ->wherePivot('status', 'accepted')
+            ->withTimestamps()
+            ->get();
+
+        $friendsAsReceiver = $this->belongsToMany(User::class, 'friendships', 'receiver_id', 'requester_id')
+            ->wherePivot('status', 'accepted')
+            ->withTimestamps()
+            ->get();
+
+        return $friendsAsRequester->merge($friendsAsReceiver)->unique('id')->values();
+    }
+
+    public function lastReads()
+    {
+        return $this->hasMany(\App\Models\LastRead::class);
     }
 }
