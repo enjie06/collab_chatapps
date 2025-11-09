@@ -30,7 +30,8 @@
                 <label for="password" class="block text-sm font-medium text-rose-700">Password</label>
                 <input type="password" id="password" name="password"
                        class="mt-1 block w-full border-b border-rose-300 bg-transparent focus:border-rose-500 focus:ring-0 outline-none"
-                       placeholder="" required>
+                       placeholder="" required
+                       placeholder="********" required>
             </div>
 
             <button type="submit"

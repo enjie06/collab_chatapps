@@ -43,6 +43,11 @@ class User extends Authenticatable
     }
 
     // Status online
+    // public function isOnline()
+    // {
+    //     return $this->last_seen_at && $this->last_seen_at->gt(now()->subMinutes(5));
+    // }
+
     public function getIsOnlineAttribute()
     {
         return cache()->has('user-is-online-' . $this->id);
