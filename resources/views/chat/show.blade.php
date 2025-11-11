@@ -1,10 +1,4 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800">
-            {{ $conversation->title ?? 'Percakapan' }}
-        </h2>
-    </x-slot>
-
     @php
         $otherUser = $conversation->users->firstWhere('id', '!=', auth()->id());
         $isFriend = $otherUser
