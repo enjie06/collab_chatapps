@@ -1,11 +1,5 @@
 import './bootstrap';
 
-import Alpine from 'alpinejs';
-
-window.Alpine = Alpine;
-
-Alpine.start();
-
 window.Echo.join(`conversation.${conversationId}`)
     .listen('.message.sent', (e) => {
 
@@ -24,3 +18,9 @@ window.Echo.join(`conversation.${conversationId}`)
         chat.appendChild(bubble);
         chat.scrollTop = chat.scrollHeight;
     });
+
+import Alpine from 'alpinejs';
+
+window.Alpine = Alpine;
+
+Alpine.start();
