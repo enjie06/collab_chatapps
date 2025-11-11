@@ -102,6 +102,11 @@
     </div>
 
     <script>
+        const conversationId = {{ $conversation->id }};
+        const userId = {{ auth()->id() }};
+    </script>
+
+    <script>
     document.addEventListener("DOMContentLoaded", () => {
         const chat = document.getElementById('chat-body');
         const marker = document.getElementById('unread-marker');

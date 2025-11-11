@@ -17,12 +17,18 @@ class MessageSent implements ShouldBroadcast
 
     public function __construct(Message $message)
     {
+        // Pastikan relasi user terload
         $this->message = $message->load('user');
     }
 
     public function broadcastOn()
     {
         return new PresenceChannel('conversation.' . $this->message->conversation_id);
+    }
+
+    public function broadcastAs()
+    {
+        return 'message.sent';
     }
 
     public function broadcastWith()
@@ -34,7 +40,7 @@ class MessageSent implements ShouldBroadcast
                 'id' => $this->message->user->id,
                 'name' => $this->message->user->name,
             ],
-            'created_at' => $this->message->created_at->toDateTimeString(),
+            'created_at' => $this->message->created_at->format('H:i'),
         ];
     }
 }

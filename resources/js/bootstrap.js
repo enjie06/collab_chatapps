@@ -1,17 +1,16 @@
 import axios from 'axios';
-// import Echo from 'laravel-echo';
-// import Pusher from 'pusher-js';
+import Echo from 'laravel-echo';
 
 // Set axios ke window
 window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
-// ==== Nonaktifkan sementara kalau belum pakai broadcast / realtime ====
-// window.Pusher = Pusher;
-
-// window.Echo = new Echo({
-//     broadcaster: 'pusher',
-//     key: import.meta.env.VITE_PUSHER_APP_KEY,
-//     cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-//     forceTLS: true
-// });
+// REVERB (WebSockets)
+window.Echo = new Echo({
+    broadcaster: 'reverb',
+    wsHost: window.location.hostname,   // otomatis lokal / server
+    wsPort: 6001,                        // ini harus sama di config/reverb.php
+    wssPort: 6001,
+    forceTLS: false,                     // local → false
+    enabledTransports: ['ws', 'wss'],    // pastikan bisa konek
+});
