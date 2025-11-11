@@ -50,7 +50,7 @@
         </div>
 
         <!-- Chat Messages -->
-        <div class="bg-white p-4 rounded-lg border h-[57vh] overflow-y-auto" id="chat-body">
+        <div class="bg-white p-4 rounded-lg border h-[200vh] overflow-y-auto" id="chat-body">
             @php $isUnreadBoundaryShown = false; @endphp
 
             @foreach($conversation->messages as $message)
@@ -66,8 +66,9 @@
                     @php $isUnreadBoundaryShown = true; @endphp
                 @endif
 
+                <!-- Bubble -->
                 <div class="mb-2 flex {{ $isMe ? 'justify-end' : 'justify-start' }}">
-                    <div class="max-w-[70%] px-3 py-2 rounded-xl break-words
+                    <div class="max-w-[65%] px-2 py-1 rounded-xl leading-snug break-words
                         {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none' }}">
                         {{ $message->content }}
 
@@ -86,10 +87,10 @@
                 class="flex gap-2 p-2 border-t bg-white sticky bottom-0"
                 onsubmit="setTimeout(scrollChatToBottom, 50)">
                 @csrf
-                <input type="text" name="content"
-                    class="flex-1 border rounded-lg px-3 py-2 focus:border-rose-500"
-                    placeholder="Tulis pesan..." required>
-                <button class="bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700">
+                <textarea name="content" id="chatInput"
+                    class="flex-1 border rounded-lg px-3 py-2 focus:border-rose-500 resize-none overflow-hidden leading-tight text-[14px]"
+                    placeholder="Tulis pesan..." required></textarea>
+                <button class="bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 text-[14px]">
                     Kirim
                 </button>
             </form>
@@ -153,6 +154,14 @@
         document.getElementById('blockUser').addEventListener('click', () => {
             alert("Nanti diarahkan ke fungsi blokir user.");
         });
+    });
+    </script>
+
+    <script>
+    document.addEventListener("input", () => {
+        const input = document.getElementById('chatInput');
+        input.style.height = "auto";
+        input.style.height = (input.scrollHeight) + "px";
     });
     </script>
 </x-app-layout>
