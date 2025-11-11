@@ -106,6 +106,7 @@
         const userId = {{ auth()->id() }};
     </script>
 
+    <!-- Pembatas pesan baru -->
     <script>
     document.addEventListener("DOMContentLoaded", () => {
         const chat = document.getElementById('chat-body');
@@ -131,6 +132,7 @@
     });
     </script>
 
+    <!-- Titik tiga -->
     <script>
     document.addEventListener("DOMContentLoaded", () => {
         const toggle = document.getElementById('menuToggle');
@@ -162,11 +164,24 @@
     });
     </script>
 
+    <!-- Merapikan textarea input pesan -->
     <script>
-    document.addEventListener("input", () => {
-        const input = document.getElementById('chatInput');
-        input.style.height = "auto";
-        input.style.height = (input.scrollHeight) + "px";
+    document.addEventListener("DOMContentLoaded", () => {
+        const textarea = document.getElementById("chatInput");
+
+        const maxHeight = 150; // ≈ 10 baris
+
+        textarea.addEventListener("input", () => {
+            textarea.style.height = "auto"; // reset dulu
+            textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
+
+            // kalau sudah melebihi batas → aktifkan scroll
+            if (textarea.scrollHeight > maxHeight) {
+                textarea.style.overflowY = "auto";
+            } else {
+                textarea.style.overflowY = "hidden";
+            }
+        });
     });
     </script>
 </x-app-layout>
