@@ -53,10 +53,25 @@
         <div class="bg-white p-4 rounded-lg border h-[200vh] overflow-y-auto" id="chat-body">
             @php $isUnreadBoundaryShown = false; @endphp
 
-            @foreach($conversation->messages as $message)
-                @php $isMe = $message->user_id === auth()->id(); @endphp
+            @php $lastDate = null @endphp
 
-                {{-- Tanda Pesan Baru --}}
+            @foreach($conversation->messages as $message)
+                @php
+                    $currentDate = $message->created_at->format('d M Y');
+                    $isMe = $message->user_id === auth()->id();
+                @endphp
+
+                <!-- Tampilkan tanggal jika beda dari pesan sebelumnya -->
+                @if($lastDate !== $currentDate)
+                    <div class="text-center my-4">
+                        <span class="px-3 py-1 text-xs bg-gray-300 text-gray-700 rounded-full">
+                            {{ $currentDate === now()->format('d M Y') ? 'Hari Ini' : $currentDate }}
+                        </span>
+                    </div>
+                    @php $lastDate = $currentDate; @endphp
+                @endif
+
+                <!-- Tanda Pesan Baru -->
                 @if(!$isUnreadBoundaryShown && $message->id > $lastRead && $message->user_id != auth()->id())
                     <div id="unread-marker" class="text-center my-3">
                         <span class="px-3 py-1 text-xs bg-rose-200 text-rose-700 rounded-full">
@@ -70,7 +85,7 @@
                 <div class="mb-2 flex {{ $isMe ? 'justify-end' : 'justify-start' }}">
                     <div class="max-w-[65%] px-2 py-1 rounded-xl leading-snug break-words
                         {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none' }}">
-                        {{ $message->content }}
+                        {!! nl2br(e($message->content)) !!}
 
                         <div class="text-[10px] opacity-70 mt-1 text-right">
                             {{ $message->created_at->format('H:i') }}
@@ -88,7 +103,7 @@
                 onsubmit="setTimeout(scrollChatToBottom, 50)">
                 @csrf
                 <textarea name="content" id="chatInput"
-                    class="flex-1 border rounded-lg px-3 py-2 focus:border-rose-500 resize-none overflow-hidden leading-tight text-[14px]"
+                    class="flex-1 border rounded-lg px-3 py-2 focus:border-rose-500 resize-none overflow-hidden text-[14px]"
                     placeholder="Tulis pesan..." required></textarea>
                 <button class="bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 text-[14px]">
                     Kirim
@@ -114,9 +129,12 @@
 
         if (marker) {
             // Scroll langsung ke pembatas pesan baru
-            chat.scrollTop = marker.offsetTop - 50;
-            // Hilangkan pembatas setelah 1.5 detik
-            setTimeout(() => marker.remove(), 1500);
+            chat.scrollTo({
+                top: marker.offsetTop - 120,
+                behavior: 'smooth'
+            });
+            // Hilangkan pembatas setelah 2 detik
+            setTimeout(() => marker.remove(), 2000);
         } else {
             // Tidak ada pesan baru → scroll ke bawah biasa
             chat.scrollTop = chat.scrollHeight;
