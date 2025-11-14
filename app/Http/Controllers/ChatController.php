@@ -20,7 +20,16 @@ class ChatController extends Controller
         $conversations = $user->conversations()
             ->with(['users', 'messages' => fn($q) => $q->latest()->limit(1)])
             ->withPivot('last_read_message_id')
+            ->where(function ($q) {
+                // Tampilkan grup WALAU belum ada pesan
+                $q->where('type', 'group');
 
+                // Untuk private: tampilkan HANYA jika sudah ada pesan
+                $q->orWhere(function ($q2) {
+                    $q2->where('type', 'private')
+                    ->whereHas('messages');
+                });
+            })
             ->get();
 
         // Teman = Collection<User>
@@ -45,14 +54,13 @@ class ChatController extends Controller
 
         $user = Auth::user();
 
-        // Ambil batas baca sebelumnya dari pivot
+        // === LAST READ HANDLING ===
         $lastRead = $conversation->users()
             ->where('user_id', $user->id)
             ->first()
             ->pivot
             ->last_read_message_id ?? 0;
 
-        // Perbarui batas baca ke ID pesan terakhir yang ada
         $latestMessage = $conversation->messages->last();
         if ($latestMessage) {
             $conversation->users()->updateExistingPivot($user->id, [
@@ -60,7 +68,30 @@ class ChatController extends Controller
             ]);
         }
 
-        return view('chat.show', compact('conversation','lastRead'));
+        // === GROUP OR PRIVATE? ===
+        $isGroup = $conversation->type === 'group';
+
+        // Untuk group → boleh kirim pesan
+        if ($isGroup) {
+            $canSend = true;
+            $members = $conversation->users; // untuk ditampilkan di header
+            return view('chat.show', compact(
+                'conversation', 'lastRead', 'isGroup', 'members', 'canSend'
+            ));
+        }
+
+        // === PRIVATE CHAT LOGIC ===
+        $otherUser = $conversation->users->firstWhere('id', '!=', $user->id);
+
+        $isFriend = \App\Models\Friendship::between($user->id, $otherUser->id)
+            ->where('status', 'accepted')
+            ->exists();
+
+        $canSend = $isFriend;
+
+        return view('chat.show', compact(
+            'conversation', 'lastRead', 'isGroup', 'otherUser', 'canSend'
+        ));
     }
 
     // Kirim pesan baru
@@ -130,15 +161,25 @@ class ChatController extends Controller
 
         // 1️⃣ Buat percakapan grup
         $conversation = Conversation::create([
-            'title' => $request->title,
+            'name' => $request->title,
+            'type' => 'group',
+            'avatar' => null,   // nanti bisa update foto grup
         ]);
 
-        // 2️⃣ Tambahkan pembuat grup sebagai admin
+        // 2️⃣ Tambahkan pembuat grup
         $conversation->users()->attach(Auth::id(), ['role' => 'admin']);
 
-        // 3️⃣ Tambahkan anggota lain ke grup
-        $conversation->users()->attach($request->member_ids, ['role' => 'member']);
+        // 3️⃣ Tambahkan anggota lain
+        foreach ($request->member_ids as $memberId) {
+            $conversation->users()->attach($memberId, ['role' => 'member']);
+        }
 
         return redirect()->route('chat.index')->with('success', 'Grup berhasil dibuat!');
+    }
+
+    public function createGroup()
+    {
+        $friends = auth()->user()->friends(); // daftar teman untuk dipilih
+        return view('chat.create-group', compact('friends'));
     }
 }

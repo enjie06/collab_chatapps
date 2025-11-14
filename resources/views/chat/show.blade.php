@@ -1,12 +1,24 @@
 <x-app-layout>
     @php
-        $otherUser = $conversation->users->firstWhere('id', '!=', auth()->id());
-        $isFriend = $otherUser
+        $isGroup = $conversation->type === 'group';
+
+        // Untuk private
+        $otherUser = !$isGroup
+            ? $conversation->users->firstWhere('id', '!=', auth()->id())
+            : null;
+
+        // List anggota grup (kecuali diri sendiri)
+        $members = $isGroup
+            ? $conversation->users->where('id', '!=', auth()->id())
+            : collect();
+
+        // Private: cek pertemanan
+        $isFriend = !$isGroup && $otherUser
             ? \App\Models\Friendship::between(auth()->id(), $otherUser->id)
                 ->where('status', 'accepted')
                 ->exists()
-            : false;
-    @endphp
+            : true; // Grup selalu boleh kirim
+    @endphp  
 
     <div class="max-w-3xl mx-auto mt-2 flex flex-col h-[calc(100vh-110px)] space-y-2">
 
@@ -15,38 +27,63 @@
 
             <a href="{{ route('chat.index') }}" class="text-2xl text-rose-600 hover:text-rose-800 pr-2">←</a>
 
-            <div class="flex items-center gap-3 flex-1">
-                <img src="{{ $otherUser?->avatar ? asset('storage/'.$otherUser->avatar) : asset('images/default-avatar.png') }}"
-                    class="w-10 h-10 rounded-full object-cover border">
+            {{-- === JIKA GRUP === --}}
+            @if($isGroup)
+                <div class="flex items-center gap-3 flex-1">
+                    <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.png') }}"
+                        class="w-10 h-10 rounded-full object-cover border">
 
-                <div class="leading-tight">
-                    <p class="font-semibold text-gray-800">{{ $otherUser->name }}</p>
-                    <p class="text-xs {{ $otherUser && $otherUser->is_online ? 'text-green-600' : 'text-gray-400' }}">
-                        {{ $otherUser && $otherUser->is_online ? 'Online' : 'Offline' }}
-                    </p>
+                    <div class="leading-tight">
+                        <p class="font-semibold text-gray-800">{{ $conversation->name }}</p>
+
+                        <p class="text-xs text-gray-500">
+                            {{ $members->pluck('name')->implode(', ') }}
+                        </p>
+                    </div>
                 </div>
-            </div>
 
+            {{-- === JIKA PRIVATE === --}}
+            @else
+                <div class="flex items-center gap-3 flex-1">
+                    <img src="{{ $otherUser?->avatar ? asset('storage/'.$otherUser->avatar) : asset('images/default-avatar.png') }}"
+                        class="w-10 h-10 rounded-full object-cover border">
+
+                    <div class="leading-tight">
+                        <p class="font-semibold text-gray-800">{{ $otherUser->name }}</p>
+                        <p class="text-xs {{ $otherUser->is_online ? 'text-green-600' : 'text-gray-400' }}">
+                            {{ $otherUser->is_online ? 'Online' : 'Offline' }}
+                        </p>
+                    </div>
+                </div>
+            @endif
+
+            {{-- MENU (Nanti bisa beda untuk grup) --}}
             <div class="relative">
                 <button id="menuToggle" class="text-xl px-2 text-gray-600 hover:text-gray-800">⋮</button>
 
                 <div id="menuDropdown"
                     class="hidden absolute right-0 mt-2 w-44 bg-white border rounded-lg shadow-lg p-3">
-                    <p class="font-semibold text-center">{{ $otherUser->name }}</p>
-                    <p class="text-xs text-gray-500 text-center mb-2">{{ $otherUser->email }}</p>
 
-                    <button type="button" id="viewProfile" class="block text-left w-full hover:text-rose-600 text-sm">
-                        Lihat Profil
-                    </button>
-                    <button type="button" id="deleteChat" class="block text-left w-full hover:text-rose-600 text-sm">
-                        Hapus Percakapan
-                    </button>
-                    <button type="button" id="blockUser" class="block text-left w-full hover:text-red-600 text-sm">
-                        Blokir
-                    </button>
+                    @if($isGroup)
+                        <p class="font-semibold text-center">{{ $conversation->name }}</p>
+                        <p class="text-xs text-gray-500 text-center mb-2">
+                            {{ $members->pluck('name')->implode(', ') }}
+                        </p>
+
+                        <button class="block text-left w-full hover:text-rose-600 text-sm">
+                            Kelola Grup (nanti)
+                        </button>
+
+                    @else
+                        <p class="font-semibold text-center">{{ $otherUser->name }}</p>
+                        <p class="text-xs text-gray-500 text-center mb-2">{{ $otherUser->email }}</p>
+
+                        <button class="block text-left w-full hover:text-rose-600 text-sm">
+                            Lihat Profil
+                        </button>
+                    @endif
                 </div>
             </div>
-
         </div>
 
         <!-- Chat Messages -->
@@ -82,13 +119,29 @@
                 @endif
 
                 <!-- Bubble -->
-                <div class="mb-2 flex {{ $isMe ? 'justify-end' : 'justify-start' }}">
-                    <div class="max-w-[65%] px-2 py-1 rounded-xl leading-snug break-words
-                        {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none' }}">
-                        {!! nl2br(e($message->content)) !!}
+                <div class="mb-3 flex {{ $isMe ? 'justify-end' : 'justify-start' }}">
 
-                        <div class="text-[10px] opacity-70 mt-1 text-right">
-                            {{ $message->created_at->format('H:i') }}
+                    <div class="max-w-[70%]">
+
+                        {{-- Jika grup & bukan pesan saya → tampilkan nama + avatar --}}
+                        @if($conversation->type === 'group' && !$isMe)
+                            <div class="flex items-center gap-2 mb-1">
+                                <img src="{{ $message->user->avatar ? asset('storage/'.$message->user->avatar) : asset('images/default-avatar.png') }}"
+                                    class="w-6 h-6 rounded-full border object-cover">
+                                <span class="text-xs font-medium text-gray-700">{{ $message->user->name }}</span>
+                            </div>
+                        @endif
+
+                        {{-- Bubble --}}
+                        <div class="px-3 py-2 rounded-xl leading-snug break-words
+                            {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-900 rounded-bl-none' }}">
+
+                            {!! nl2br(e($message->content)) !!}
+
+                            <div class="text-[10px] opacity-70 mt-1 text-right">
+                                {{ $message->created_at->format('H:i') }}
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -97,7 +150,7 @@
         </div>
 
         <!-- Form kirim pesan -->
-        @if($isFriend)
+        @if($canSend)
             <form action="{{ route('chat.send', $conversation->id) }}" method="POST"
                 class="flex gap-2 p-2 border-t bg-white sticky bottom-0"
                 onsubmit="setTimeout(scrollChatToBottom, 50)">
@@ -130,7 +183,7 @@
         if (marker) {
             // Scroll langsung ke pembatas pesan baru
             chat.scrollTo({
-                top: marker.offsetTop - 120,
+                top: marker.offsetTop - 150,
                 behavior: 'smooth'
             });
             // Hilangkan pembatas setelah 2 detik

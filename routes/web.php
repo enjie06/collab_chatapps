@@ -39,6 +39,12 @@ Route::middleware(['auth'])->group(function () {
     // Tambahan fitur: buat percakapan & broadcast
     Route::post('/chat/create', [ChatController::class, 'createConversation'])->name('chat.create');
     Route::post('/chat/broadcast', [ChatController::class, 'createBroadcast'])->name('chat.broadcast');
+
+    // Halaman form buat grup
+    Route::get('/groups/create', [ChatController::class, 'createGroup'])->name('group.create');
+
+    // Simpan grup (ini sudah ada, tapi kita rapikan saja)
+    Route::post('/groups/store', [ChatController::class, 'createBroadcast'])->name('group.store');
 });
 
 require __DIR__.'/auth.php';
