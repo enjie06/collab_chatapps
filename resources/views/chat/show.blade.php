@@ -165,23 +165,25 @@
 
         <!-- Form kirim pesan -->
         @if($isFriend)
-            <form action="{{ route('chat.send', $conversation->id) }}" method="POST" enctype="multipart/form-data"
-                class="flex gap-2 p-2 border-t bg-white sticky bottom-0"
-                onsubmit="setTimeout(scrollChatToBottom, 50)">
+            <form action="{{ route('chat.send', $conversation->id) }}" method="POST" 
+                enctype="multipart/form-data"
+                class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
                 @csrf
                 <textarea name="content" id="chatInput"
-                    class="flex-1 border rounded-lg px-3 py-2 focus:border-rose-500 resize-none overflow-hidden text-[14px]"
+                    class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none overflow-hidden text-[13px] h-[40px]"
                     placeholder="Tulis pesan..." required></textarea>
-                <label class="cursor-pointer bg-gray-200 px-3 py-2 rounded-lg hover:bg-gray-300 text-sm">
+
+                <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
                     📎
-                    <input type="file" name="attachment" id="fileAttachment" class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a">
-                </label>
-                <label class="cursor-pointer bg-gray-200 px-3 py-2 rounded-lg hover:bg-gray-300 text-sm">
-                    🎤
-                    <input type="file" name="voice_note" id="voiceAttachment" class="hidden" accept="audio/*">
+                    <input type="file" name="attachment" class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a">
                 </label>
 
-                <button class="bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 text-[14px]">
+                <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
+                    🎤
+                    <input type="file" name="voice_note" class="hidden" accept="audio/*">
+                </label>
+
+                <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg hover:bg-rose-700 text-[14px] flex items-center">
                     Kirim
                 </button>
             </form>
@@ -222,7 +224,7 @@
         setTimeout(() => {
             const chat = document.getElementById('chat-body');
             chat.scrollTop = chat.scrollHeight;
-        }, 100);
+        }, 50);
     });
     </script>
 
