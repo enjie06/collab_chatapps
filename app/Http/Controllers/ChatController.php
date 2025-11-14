@@ -64,32 +64,64 @@ class ChatController extends Controller
     }
 
     // Kirim pesan baru
-    public function sendMessage(Request $request, $id)
-    {
-        $request->validate(['content' => 'required|string|max:1000']);
+   public function sendMessage(Request $request, $id)
+{
+    $request->validate([
+        'content'   => 'nullable|string|max:1000',
+        'attachment' => 'nullable|file|max:20480',
+        'voice_note' => 'nullable|file|max:20480',
+    ]);
 
-        $conversation = Conversation::with('users')->findOrFail($id);
+    $conversation = Conversation::with('users')->findOrFail($id);
 
-        // Siapa lawan bicara (untuk 1-1)
-        $otherUser = $conversation->users()->where('user_id', '!=', Auth::id())->first();
+    $otherUser = $conversation->users()->where('user_id', '!=', Auth::id())->first();
 
-        // Kalau bukan teman (accepted), blokir kirim
-        if ($otherUser && !Friendship::between(Auth::id(), $otherUser->id)
-            ->where('status', 'accepted')
-            ->exists()) {
-            return back()->with('error', 'Kalian bukan teman lagi. Chat hanya bisa dibaca.');
-        }
-
-        $message = Message::create([
-            'conversation_id' => $conversation->id,
-            'user_id'         => Auth::id(),
-            'content'         => $request->content,
-        ]);
-
-        broadcast(new MessageSent($message))->toOthers();
-
-        return back();
+    if ($otherUser && !Friendship::between(Auth::id(), $otherUser->id)
+        ->where('status', 'accepted')
+        ->exists()) {
+        return back()->with('error', 'Kalian bukan teman lagi. Chat hanya dapat dibaca.');
     }
+
+    // 1️⃣ SIMPAN PESAN
+    $message = Message::create([
+        'conversation_id' => $conversation->id,
+        'user_id'         => Auth::id(),
+        'content'         => $request->content, // boleh kosong
+    ]);
+
+    // 2️⃣ JIKA ADA FILE, SIMPAN ATTACHMENT
+    if ($request->hasFile('attachment')) {
+
+        $file      = $request->file('attachment');
+        $mime      = $file->getClientMimeType();
+        $type      = explode('/', $mime)[0];
+        $path      = $file->store('attachments', 'public');
+
+        // Buat attachment
+        \App\Models\Attachment::create([
+            'message_id' => $message->id,
+            'file_path'  => $path,
+            'file_type'  => $type == 'application' ? 'file' : $type,
+        ]);
+    }
+
+    if ($request->hasFile('voice_note')) {
+
+        $file = $request->file('voice_note');
+        $path = $file->store('attachments', 'public');
+
+        \App\Models\Attachment::create([
+            'message_id' => $message->id,
+            'file_path'  => $path,
+            'file_type'  => 'audio',
+        ]);
+    }
+
+    broadcast(new MessageSent($message))->toOthers();
+
+    return back();
+}
+
 
     public function createConversation(Request $request)
     {
