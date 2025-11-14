@@ -119,29 +119,43 @@
                 @endif
 
                 <!-- Bubble -->
-                <div class="mb-3 flex {{ $isMe ? 'justify-end' : 'justify-start' }}">
+                <div class="mb-2 flex {{ $isMe ? 'justify-end' : 'justify-start' }}">
+                    <div class="max-w-[65%] px-2 py-1 rounded-xl leading-snug break-words
+                        {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none' }}">
+                        @if($message->attachment)
+                            @php $att = $message->attachment; @endphp
 
-                    <div class="max-w-[70%]">
+                            {{-- Foto --}}
+                            @if(str_contains($att->file_type, 'image'))
+                                <img src="{{ asset('storage/'.$att->file_path) }}" 
+                                    class="rounded-lg max-w-full mb-2">
+                            @endif
 
-                        {{-- Jika grup & bukan pesan saya → tampilkan nama + avatar --}}
-                        @if($conversation->type === 'group' && !$isMe)
-                            <div class="flex items-center gap-2 mb-1">
-                                <img src="{{ $message->user->avatar ? asset('storage/'.$message->user->avatar) : asset('images/default-avatar.png') }}"
-                                    class="w-6 h-6 rounded-full border object-cover">
-                                <span class="text-xs font-medium text-gray-700">{{ $message->user->name }}</span>
-                            </div>
+                            {{-- Video --}}
+                            @if($att->file_type === 'video')
+                                <video controls class="rounded-lg max-w-full mb-2">
+                                    <source src="{{ asset('storage/'.$att->file_path) }}">
+                                </video>
+                            @endif
+
+                            {{-- Audio / VN --}}
+                            @if($att->file_type === 'audio')
+                                <audio controls class="w-full mb-2">
+                                    <source src="{{ asset('storage/'.$att->file_path) }}">
+                                </audio>
+                            @endif
+
+                            {{-- File Dokumen --}}
+                            @if($att->file_type === 'file')
+                                <a href="{{ asset('storage/'.$att->file_path) }}" 
+                                class="text-blue-600 underline block mb-2" download>📄 Download File</a>
+                            @endif
                         @endif
 
-                        {{-- Bubble --}}
-                        <div class="px-3 py-2 rounded-xl leading-snug break-words
-                            {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-900 rounded-bl-none' }}">
+                        {!! nl2br(e($message->content)) !!}
 
-                            {!! nl2br(e($message->content)) !!}
-
-                            <div class="text-[10px] opacity-70 mt-1 text-right">
-                                {{ $message->created_at->format('H:i') }}
-                            </div>
-
+                        <div class="text-[10px] opacity-70 mt-1 text-right">
+                            {{ $message->created_at->format('H:i') }}
                         </div>
                     </div>
                 </div>
@@ -150,14 +164,23 @@
         </div>
 
         <!-- Form kirim pesan -->
-        @if($canSend)
-            <form action="{{ route('chat.send', $conversation->id) }}" method="POST"
+        @if($isFriend)
+            <form action="{{ route('chat.send', $conversation->id) }}" method="POST" enctype="multipart/form-data"
                 class="flex gap-2 p-2 border-t bg-white sticky bottom-0"
                 onsubmit="setTimeout(scrollChatToBottom, 50)">
                 @csrf
                 <textarea name="content" id="chatInput"
                     class="flex-1 border rounded-lg px-3 py-2 focus:border-rose-500 resize-none overflow-hidden text-[14px]"
                     placeholder="Tulis pesan..." required></textarea>
+                <label class="cursor-pointer bg-gray-200 px-3 py-2 rounded-lg hover:bg-gray-300 text-sm">
+                    📎
+                    <input type="file" name="attachment" id="fileAttachment" class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a">
+                </label>
+                <label class="cursor-pointer bg-gray-200 px-3 py-2 rounded-lg hover:bg-gray-300 text-sm">
+                    🎤
+                    <input type="file" name="voice_note" id="voiceAttachment" class="hidden" accept="audio/*">
+                </label>
+
                 <button class="bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 text-[14px]">
                     Kirim
                 </button>

@@ -32,4 +32,9 @@ class Message extends Model
     {
         return $this->hasMany(Attachment::class);
     }
+
+    public function attachment()
+    {
+        return $this->hasOne(\App\Models\Attachment::class);
+    }
 }
