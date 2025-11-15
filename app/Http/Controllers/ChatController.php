@@ -213,4 +213,15 @@ class ChatController extends Controller
         $friends = auth()->user()->friends(); // daftar teman untuk dipilih
         return view('chat.create-group', compact('friends'));
     }
+
+    public function typing(Request $request, $id)
+    {
+        broadcast(new \App\Events\UserTyping(
+            Auth::user(),
+            $id,
+            $request->typing
+        ))->toOthers();
+
+        return response()->json(['status' => 'ok']);
+    }
 }

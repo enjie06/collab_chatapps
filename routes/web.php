@@ -45,6 +45,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Simpan grup (ini sudah ada, tapi kita rapikan saja)
     Route::post('/groups/store', [ChatController::class, 'createBroadcast'])->name('group.store');
+
+    // Info mengetik
+    Route::post('/chat/{id}/typing', [ChatController::class, 'typing'])->name('chat.typing');
 });
 
 require __DIR__.'/auth.php';

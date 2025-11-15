@@ -84,6 +84,8 @@
                     @endif
                 </div>
             </div>
+
+            <div id="typingIndicator" class="text-xs text-gray-500 px-3 py-1"></div>
         </div>
 
         <!-- Chat Messages -->
@@ -207,12 +209,12 @@
     </div>
 
     <script>
-        const conversationId = {{ $conversation->id }};
-        const userId = {{ auth()->id() }};
-    </script>
+        window.conversationId = {{ $conversation->id }};
+        window.userId = {{ auth()->id() }};
+        window.userName = "{{ auth()->user()->name }}";
+        window.isGroup = {{ $isGroup ? 'true' : 'false' }};
 
-    <!-- Pembatas pesan baru -->
-    <script>
+    // Pembatas pesan baru
     document.addEventListener("DOMContentLoaded", () => {
         const chat = document.getElementById('chat-body');
         const marker = document.getElementById('unread-marker');
@@ -230,20 +232,16 @@
             chat.scrollTop = chat.scrollHeight;
         }
     });
-    </script>
 
-    <!-- Setelah kirim pesan, tetap scroll ke bawah -->
-    <script>
+    // Setelah kirim pesan, tetap scroll ke bawah
     document.querySelector('form[action*="send"]')?.addEventListener("submit", () => {
         setTimeout(() => {
             const chat = document.getElementById('chat-body');
             chat.scrollTop = chat.scrollHeight;
         }, 50);
     });
-    </script>
 
-    <!-- Titik tiga -->
-    <script>
+    // Titik tiga
     document.addEventListener("DOMContentLoaded", () => {
         const toggle = document.getElementById('menuToggle');
         const menu = document.getElementById('menuDropdown');
@@ -272,10 +270,8 @@
             alert("Nanti diarahkan ke fungsi blokir user.");
         });
     });
-    </script>
 
-    <!-- Merapikan textarea input pesan -->
-    <script>
+    // Merapikan textarea input pesan
     document.addEventListener("DOMContentLoaded", () => {
         const textarea = document.getElementById("chatInput");
         const chat = document.getElementById("chat-body");
