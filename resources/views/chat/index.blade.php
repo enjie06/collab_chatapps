@@ -143,7 +143,7 @@
             @forelse($conversations as $conversation)
                 @php
                     $isGroup = $conversation->type === 'group';
-                    $lastMsg = $conversation->messages->first();
+                    $lastMsg = $conversation->messages->last();
                     $myRead = $conversation->users->firstWhere('id', auth()->id())?->pivot?->last_read_message_id ?? 0;
                     $hasUnread = $lastMsg && $lastMsg->user_id != auth()->id() && $myRead < $lastMsg->id;
 

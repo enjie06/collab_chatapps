@@ -15,7 +15,7 @@ class Conversation extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'conversation_user')
-                    ->withPivot('role', 'last_read_message_id')
+                    ->withPivot('role', 'last_read_message_id', 'deleted_at')
                     ->withTimestamps();
     }
 
@@ -28,5 +28,17 @@ class Conversation extends Model
     public function lastReads()
     {
         return $this->hasMany(\App\Models\LastRead::class);
+    }
+
+    public function latestMessageFor($userId)
+    {
+        $pivot = $this->users()->where('user_id', $userId)->first()?->pivot;
+
+        $deletedAt = $pivot?->deleted_at;
+
+        return $this->messages()
+            ->when($deletedAt, fn($q) => $q->where('created_at', '>', $deletedAt))
+            ->orderBy('id', 'desc')
+            ->first();
     }
 }

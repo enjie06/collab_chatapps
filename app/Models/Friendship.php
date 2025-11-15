@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Friendship extends Model
 {
-    protected $fillable = ['requester_id', 'receiver_id', 'status'];
+    protected $fillable = ['requester_id', 'receiver_id', 'status', 'is_blocked', 'blocked_by'];
+    protected $casts = ['is_blocked' => 'boolean'];
 
     // relasi buat dipakai di blade (req->requester / req->receiver)
     public function requester()

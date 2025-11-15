@@ -11,6 +11,12 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
+    public function show($id)
+    {
+        $user = \App\Models\User::findOrFail($id);
+        return view('profile.show', compact('user'));
+    }
+
     /**
      * Display the user's profile form.
      */

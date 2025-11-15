@@ -94,4 +94,33 @@ class FriendController extends Controller
         if ($f->status === 'rejected') $f->delete();
         return back()->with('success', 'Notifikasi penolakan dibersihkan.');
     }
+
+    public function block($userId)
+    {
+        $f = Friendship::between(auth()->id(), $userId)->firstOrFail();
+
+        $f->update([
+            'is_blocked' => true,
+            'blocked_by' => auth()->id()
+        ]);
+
+        return back()->with('success', 'User diblokir.');
+    }
+
+    public function unblock($userId)
+    {
+        $f = Friendship::between(auth()->id(), $userId)->firstOrFail();
+
+        // hanya yang memblokir yang boleh membuka blokir
+        if ($f->blocked_by !== auth()->id()) {
+            abort(403, 'Kamu tidak memiliki izin untuk membuka blokir ini.');
+        }
+
+        $f->update([
+            'is_blocked' => false,
+            'blocked_by' => null
+        ]);
+
+        return back()->with('success', 'User di-unblock.');
+    }
 }

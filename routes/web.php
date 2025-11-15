@@ -40,14 +40,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/create', [ChatController::class, 'createConversation'])->name('chat.create');
     Route::post('/chat/broadcast', [ChatController::class, 'createBroadcast'])->name('chat.broadcast');
 
-    // Halaman form buat grup
+    // Grup
     Route::get('/groups/create', [ChatController::class, 'createGroup'])->name('group.create');
-
-    // Simpan grup (ini sudah ada, tapi kita rapikan saja)
     Route::post('/groups/store', [ChatController::class, 'createBroadcast'])->name('group.store');
 
     // Info mengetik
     Route::post('/chat/{id}/typing', [ChatController::class, 'typing'])->name('chat.typing');
+
+    // Menu one-to-one
+    Route::get('/user/{id}/profile', [ProfileController::class, 'show'])->name('user.profile');
+    Route::delete('/chat/{id}/delete', [ChatController::class, 'deleteChat'])->name('chat.delete');
+    Route::post('/friends/block/{userId}', [FriendController::class, 'block'])->name('friends.block');
+    Route::post('/friends/unblock/{userId}', [FriendController::class, 'unblock'])->name('friends.unblock');
 });
 
 require __DIR__.'/auth.php';

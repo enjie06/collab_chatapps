@@ -2,22 +2,25 @@
     @php
         $isGroup = $conversation->type === 'group';
 
-        // Untuk private
         $otherUser = !$isGroup
             ? $conversation->users->firstWhere('id', '!=', auth()->id())
             : null;
 
-        // List anggota grup (kecuali diri sendiri)
+        // Anggota grup
         $members = $isGroup
             ? $conversation->users->where('id', '!=', auth()->id())
             : collect();
 
-        // Private: cek pertemanan
-        $isFriend = !$isGroup && $otherUser
-            ? \App\Models\Friendship::between(auth()->id(), $otherUser->id)
-                ->where('status', 'accepted')
-                ->exists()
-            : true; // Grup selalu boleh kirim
+        // Logika blokir
+        if ($isGroup) {
+            $friendship = null;
+            $isBlocked = false;
+            $isFriend = true; // grup selalu bisa kirim pesan
+        } else {
+            $friendship = \App\Models\Friendship::between(auth()->id(), $otherUser->id)->first();
+            $isBlocked = $friendship && $friendship->is_blocked;
+            $isFriend = $friendship && $friendship->status === 'accepted' && !$isBlocked;
+        }
     @endphp  
 
     <div class="max-w-3xl mx-auto mt-2 flex flex-col h-[calc(100vh-110px)] space-y-2">
@@ -78,9 +81,48 @@
                         <p class="font-semibold text-center">{{ $otherUser->name }}</p>
                         <p class="text-xs text-gray-500 text-center mb-2">{{ $otherUser->email }}</p>
 
-                        <button class="block text-left w-full hover:text-rose-600 text-sm">
+                        <button onclick="window.location.href='{{ route('user.profile', $otherUser->id) }}'"
+                            class="block text-left w-full hover:text-rose-600 text-sm">
                             Lihat Profil
-                        </button>
+                        </button>                     
+
+                        <form action="{{ route('chat.delete', $conversation->id) }}" 
+                            method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button class="block w-full text-left hover:text-rose-600 text-sm">
+                                Hapus Chat
+                            </button>
+                        </form>
+
+                        @php
+                            if ($isGroup) {
+                                // grup tidak pakai blokir
+                                $friendship = null;
+                                $isBlocked = false;
+                                $canBlock = false;
+                                $canUnblock = false;
+                            } else {
+                                $friendship = \App\Models\Friendship::between(auth()->id(), $otherUser->id)->first();
+                                $isBlocked = $friendship && $friendship->is_blocked;
+                                $canBlock = !$isBlocked;
+                                $canUnblock = $isBlocked && $friendship->blocked_by == auth()->id();
+                            }
+                        @endphp
+
+                        @if($canBlock)
+                            <form action="{{ route('friends.block', $otherUser->id) }}" method="POST">
+                                @csrf
+                                <button class="block w-full text-left hover:text-rose-600 text-sm">Blokir</button>
+                            </form>
+                        @endif
+
+                        @if($canUnblock)
+                            <form action="{{ route('friends.unblock', $otherUser->id) }}" method="POST">
+                                @csrf
+                                <button class="block w-full text-left hover:text-green-600 text-sm">Buka Blokir</button>
+                            </form>
+                        @endif
                     @endif
                 </div>
             </div>
@@ -94,7 +136,7 @@
 
             @php $lastDate = null @endphp
 
-            @foreach($conversation->messages as $message)
+            @foreach($messages as $message)
                 @php
                     $currentDate = $message->created_at->format('d M Y');
                     $isMe = $message->user_id === auth()->id();
@@ -175,6 +217,7 @@
 
         <!-- Form kirim pesan -->
         @if($isFriend)
+            {{-- FORM KIRIM PESAN --}}
             <form action="{{ route('chat.send', $conversation->id) }}" method="POST" 
                 enctype="multipart/form-data"
                 class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
@@ -186,7 +229,7 @@
                 <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
                             rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
                     📎
-                    <input type="file" name="attachment" class="hidden" 
+                    <input type="file" name="attachment" class="hidden"
                         accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a">
                 </label>
 
@@ -202,8 +245,14 @@
                 </button>
             </form>
         @else
-            <div class="text-center text-gray-400 text-sm italic py-3 sticky bottom-0 bg-white border-t">
-                Kalian bukan teman lagi. Chat hanya dapat dibaca.
+            <div class="text-center text-gray-500 text-sm italic py-3 sticky bottom-0 bg-white border-t">
+                @if($isBlocked)
+                    Kalian tidak dapat saling mengirim pesan.
+                @elseif($friendship && $friendship->status !== 'accepted')
+                    Kalian sudah tidak berteman. Chat hanya dapat dibaca.
+                @else
+                    Chat tidak bisa digunakan.
+                @endif
             </div>
         @endif
     </div>
