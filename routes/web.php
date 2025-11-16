@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\GroupController;
+use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\FriendController;
 
 Route::get('/', function () {
@@ -40,10 +42,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/create', [ChatController::class, 'createConversation'])->name('chat.create');
     Route::post('/chat/broadcast', [ChatController::class, 'createBroadcast'])->name('chat.broadcast');
 
-    // Grup
-    Route::get('/groups/create', [ChatController::class, 'createGroup'])->name('group.create');
-    Route::post('/groups/store', [ChatController::class, 'createBroadcast'])->name('group.store');
-
     // Info mengetik
     Route::post('/chat/{id}/typing', [ChatController::class, 'typing'])->name('chat.typing');
 
@@ -52,6 +50,21 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/chat/{id}/delete', [ChatController::class, 'deleteChat'])->name('chat.delete');
     Route::post('/friends/block/{userId}', [FriendController::class, 'block'])->name('friends.block');
     Route::post('/friends/unblock/{userId}', [FriendController::class, 'unblock'])->name('friends.unblock');
+
+    // Grup
+    Route::get('/groups/create', [GroupController::class, 'createGroup'])->name('group.create');
+    Route::post('/groups/store', [GroupController::class, 'store'])->name('group.store');
+
+    // Menu grip
+    Route::get('/group/{id}/info', [GroupController::class, 'info'])->name('group.info');
+    Route::post('/group/{id}/name', [GroupController::class, 'updateName'])->name('group.name');
+    Route::post('/group/{id}/photo', [GroupController::class, 'updatePhoto'])->name('group.photo');
+    Route::post('/group/{id}/add', [GroupController::class, 'addMember'])->name('group.add');
+    Route::delete('/group/{id}/remove/{memberId}', [GroupController::class, 'removeMember'])->name('group.remove');
+    Route::post('/group/{id}/promote/{memberId}', [GroupController::class, 'promote'])->name('group.promote');
+    Route::post('/group/{id}/demote/{memberId}', [GroupController::class, 'demote'])->name('group.demote');
+    Route::delete('/group/{id}/leave', [GroupController::class, 'leave'])->name('group.leave');
+    Route::delete('/group/{id}/delete', [GroupController::class, 'delete'])->name('group.delete');
 });
 
 require __DIR__.'/auth.php';

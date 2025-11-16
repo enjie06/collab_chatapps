@@ -83,12 +83,20 @@
             </div>
 
             {{-- List Grup --}}
-            @foreach($conversations->where('type', 'group') as $group)
+            @foreach(
+                $conversations
+                    ->where('type', 'group')
+                    ->filter(function($g) {
+                        $myPivot = $g->users->firstWhere('id', auth()->id())?->pivot;
+                        return is_null($myPivot?->deleted_at);
+                    })
+                as $group
+            )
                 <a href="{{ route('chat.show', $group->id) }}"
                     class="block p-3 mb-2 bg-white border rounded-lg hover:bg-rose-50 transition">
 
                     <div class="flex items-center gap-3">
-                        <img src="{{ $group->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.png') }}"
+                        <img src="{{ $group->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.jpeg') }}"
                             class="w-9 h-9 rounded-full object-cover border">
 
                         <div class="flex-1">
@@ -161,7 +169,7 @@
                         {{-- FOTO --}}
                         @if($isGroup)
                             <div class="relative">
-                                <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.png') }}"
+                                <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.jpeg') }}"
                                     class="w-10 h-10 rounded-full object-cover border">
                             </div>
                         @else

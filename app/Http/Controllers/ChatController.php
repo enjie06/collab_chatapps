@@ -17,23 +17,58 @@ class ChatController extends Controller
     {
         $user = Auth::user();
 
-        $conversations = $user->conversations()
-            ->with(['messages' => function($q) use ($user) {
-                // Ambil pesan setelah waktu user menghapus chat
-                $q->when(true, function($q2) use ($user) {
-                    $pivot = $q2->getQuery()->joins ?
-                        null : null; // abaikan—tidak perlu pivot di sini
-                });
-            }, 'users'])
-            ->wherePivot('deleted_at', null)
+        // Ambil semua percakapan yang pernah user ikuti
+        $conversations = Conversation::whereHas('users', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->with(['messages', 'users'])
             ->get();
 
-        // Urutkan percakapan berdasarkan pesan terbaru
-        $conversations = $conversations->sortByDesc(function($c) {
-            return optional($c->messages->last())->created_at;
+        // Filter PRIVATE (hide bila user sudah hapus)
+        $conversations = $conversations->filter(function($c) use ($user) {
+            $pivot = $c->users->firstWhere('id', $user->id)->pivot;
+
+            if ($c->type === 'private') {
+                return $pivot->deleted_at === null;
+            }
+
+            return true; // Grup & broadcast tetap tampil
         });
 
-        // Teman
+        // Hitung pesan terakhir yang terlihat user
+        $conversations = $conversations->map(function($c) use ($user) {
+
+            $pivot = $c->users->firstWhere('id', $user->id)->pivot;
+            $deletedAt = $pivot->deleted_at;
+
+            // filter pesan yang sudah dihapus
+            $visibleMessages = $c->messages->filter(function($m) use ($deletedAt) {
+                if (!$deletedAt) return true;
+                return $m->created_at > $deletedAt;
+            });
+
+            $c->last_visible_message = $visibleMessages->sortBy('id')->last();
+            $c->last_visible_time = $c->last_visible_message?->created_at;
+
+            return $c;
+        });
+
+        // Urutkan berdasarkan pesan terakhir
+        $conversations = $conversations->sortByDesc('last_visible_time');
+
+        // Pisahkan kategori
+        $privateChats = $conversations->where('type', 'private');
+        $broadcasts   = $conversations->where('type', 'broadcast');
+
+        // GRUP LIST — grup yang belum keluar ditampilkan
+        $groupChats = $conversations
+            ->where('type', 'group')
+            ->filter(function($c) use ($user) {
+                $pivot = $c->users->firstWhere('id', $user->id)->pivot;
+                return $pivot->deleted_at === null; // grup yg sudah keluar disembunyikan di sidebar kiri
+            });
+
+        // Teman & request
         $friends  = $user->friends();
         $incoming = $user->receivedRequestsPending()->get();
         $outgoing = Friendship::where('requester_id', $user->id)
@@ -41,7 +76,15 @@ class ChatController extends Controller
                     ->with('receiver')
                     ->get();
 
-        return view('chat.index', compact('conversations','friends','incoming','outgoing'));
+        return view('chat.index', compact(
+            'conversations',
+            'privateChats',
+            'groupChats',
+            'broadcasts',
+            'friends',
+            'incoming',
+            'outgoing'
+        ));
     }
 
     // Detail percakapan (chatroom)
@@ -163,6 +206,15 @@ class ChatController extends Controller
 
         $conversation = Conversation::with('users')->findOrFail($id);
 
+        // Cek: kalau ini grup dan user sudah keluar (deleted_at != null) → tolak
+        if ($conversation->type === 'group') {
+            $pivot = $conversation->users->firstWhere('id', $me)?->pivot;
+
+            if ($pivot && $pivot->deleted_at !== null) {
+                return back()->with('error', 'Kamu sudah keluar dari grup ini. Tidak bisa mengirim pesan lagi.');
+            }
+        }
+
         // Ambil lawan bicara khusus private
         $otherUser = $conversation->type === 'private'
             ? $conversation->users->firstWhere('id', '!=', $me)
@@ -245,37 +297,6 @@ class ChatController extends Controller
         return redirect()->route('chat.show', $conversation->id);
     }
 
-    public function createBroadcast(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'member_ids' => 'required|array',
-        ]);
-
-        // 1️⃣ Buat percakapan grup
-        $conversation = Conversation::create([
-            'name' => $request->title,
-            'type' => 'group',
-            'avatar' => null,   // nanti bisa update foto grup
-        ]);
-
-        // 2️⃣ Tambahkan pembuat grup
-        $conversation->users()->attach(Auth::id(), ['role' => 'admin']);
-
-        // 3️⃣ Tambahkan anggota lain
-        foreach ($request->member_ids as $memberId) {
-            $conversation->users()->attach($memberId, ['role' => 'member']);
-        }
-
-        return redirect()->route('chat.index')->with('success', 'Grup berhasil dibuat!');
-    }
-
-    public function createGroup()
-    {
-        $friends = auth()->user()->friends(); // daftar teman untuk dipilih
-        return view('chat.create-group', compact('friends'));
-    }
-
     public function typing(Request $request, $id)
     {
         broadcast(new \App\Events\UserTyping(
@@ -291,9 +312,17 @@ class ChatController extends Controller
     {
         $conversation = Conversation::findOrFail($id);
 
-        $conversation->users()->updateExistingPivot(Auth::id(), [
-            'deleted_at' => now()
-        ]);
+        if ($conversation->type === 'private') {
+            // PRIVATE → hide chat dari list
+            $conversation->users()->updateExistingPivot(Auth::id(), [
+                'deleted_at' => now()
+            ]);
+        } else {
+            // GROUP → hapus history chat user, tapi grup tetap muncul
+            $conversation->users()->updateExistingPivot(Auth::id(), [
+                'deleted_at' => now() // supaya pesan lama hilang
+            ]);
+        }
 
         return redirect()->route('chat.index')->with('success', 'Chat berhasil dihapus.');
     }

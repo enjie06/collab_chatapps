@@ -15,13 +15,32 @@
         if ($isGroup) {
             $friendship = null;
             $isBlocked = false;
-            $isFriend = true; // grup selalu bisa kirim pesan
+            $isLeft = false;
+
+            if ($isGroup) {
+                $pivot = $conversation->users->firstWhere('id', auth()->id())?->pivot;
+                $isLeft = !is_null($pivot?->deleted_at);
+                $isFriend = !$isLeft; // tidak boleh kirim chat jika sudah keluar
+            }
         } else {
             $friendship = \App\Models\Friendship::between(auth()->id(), $otherUser->id)->first();
             $isBlocked = $friendship && $friendship->is_blocked;
             $isFriend = $friendship && $friendship->status === 'accepted' && !$isBlocked;
         }
-    @endphp  
+    @endphp 
+    
+    @if(session('error_admin_leave'))
+        <div id="adminWarning"
+            class="mx-4 my-2 text-center text-xs bg-rose-100 text-rose-700 py-2 rounded-lg">
+            {{ session('error_admin_leave') }}
+        </div>
+
+        <script>
+            setTimeout(() => {
+                document.getElementById('adminWarning')?.remove();
+            }, 2500);
+        </script>
+    @endif
 
     <div class="max-w-3xl mx-auto mt-2 flex flex-col h-[calc(100vh-110px)] space-y-2">
 
@@ -33,14 +52,39 @@
             {{-- === JIKA GRUP === --}}
             @if($isGroup)
                 <div class="flex items-center gap-3 flex-1">
-                    <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.png') }}"
+                    <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.jpeg') }}"
                         class="w-10 h-10 rounded-full object-cover border">
 
                     <div class="leading-tight">
                         <p class="font-semibold text-gray-800">{{ $conversation->name }}</p>
 
+                        @php
+                            // Anggota aktif saja
+                            $activeMembers = $conversation->users->filter(function($u) {
+                                return is_null($u->pivot->deleted_at);
+                            });
+
+                            // Tambah "(You)" untuk diri sendiri
+                            $names = $activeMembers->map(function($u) {
+                                return $u->id === auth()->id()
+                                    ? $u->name . ' (You)'
+                                    : $u->name;
+                            })->values();
+
+                            // Pindahkan "You" ke paling akhir
+                            $namesSorted = $names->sort(function ($a, $b) {
+                                // Yang mengandung "(You)" selalu di belakang
+                                $aIsYou = str_contains($a, '(You)');
+                                $bIsYou = str_contains($b, '(You)');
+
+                                if ($aIsYou && !$bIsYou) return 1;
+                                if (!$aIsYou && $bIsYou) return -1;
+                                return 0;
+                            });
+                        @endphp
+
                         <p class="text-xs text-gray-500">
-                            {{ $members->pluck('name')->implode(', ') }}
+                            {{ $namesSorted->implode(', ') }}
                         </p>
                     </div>
                 </div>
@@ -60,7 +104,7 @@
                 </div>
             @endif
 
-            {{-- MENU (Nanti bisa beda untuk grup) --}}
+            {{-- MENU --}}
             <div class="relative">
                 <button id="menuToggle" class="text-xl px-2 text-gray-600 hover:text-gray-800">⋮</button>
 
@@ -69,14 +113,30 @@
 
                     @if($isGroup)
                         <p class="font-semibold text-center">{{ $conversation->name }}</p>
-                        <p class="text-xs text-gray-500 text-center mb-2">
-                            {{ $members->pluck('name')->implode(', ') }}
-                        </p>
 
-                        <button class="block text-left w-full hover:text-rose-600 text-sm">
-                            Kelola Grup (nanti)
+                        <button
+                            onclick="window.location.href='{{ route('group.info', $conversation->id) }}'"
+                            class="block w-full text-left hover:text-rose-600 text-sm"
+                        >
+                            Kelola Grup
                         </button>
 
+                        {{-- Hapus Chat (hanya hapus chat milik kita) --}}
+                        <form action="{{ route('chat.delete', $conversation->id) }}" method="POST">
+                            @csrf @method('DELETE')
+                            <button class="block w-full text-left hover:text-rose-600 text-sm">
+                                Hapus Chat
+                            </button>
+                        </form>
+
+                        {{-- Leave Group --}}
+                        <form action="{{ route('group.leave', $conversation->id) }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button class="block w-full text-left hover:text-red-600 text-sm">
+                                Tinggalkan Grup
+                            </button>
+                        </form>
                     @else
                         <p class="font-semibold text-center">{{ $otherUser->name }}</p>
                         <p class="text-xs text-gray-500 text-center mb-2">{{ $otherUser->email }}</p>
@@ -137,6 +197,15 @@
             @php $lastDate = null @endphp
 
             @foreach($messages as $message)
+
+                {{-- SYSTEM MESSAGE --}}
+                @if(Str::startsWith($message->content, '[SYSTEM]'))
+                    <div class="text-center text-xs text-gray-500 my-2">
+                        {{ Str::after($message->content, '[SYSTEM] ') }}
+                    </div>
+                    @continue
+                @endif
+
                 @php
                     $currentDate = $message->created_at->format('d M Y');
                     $isMe = $message->user_id === auth()->id();
@@ -212,48 +281,105 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Keluar grup -->
+                @if($message->user_id == 0)
+                    <div class="text-center text-xs text-gray-500 my-2">
+                        {{ Str::after($message->content, '[SYSTEM] ') }}
+                    </div>
+                @else
+                    {{-- tampilkan pesan normal --}}
+                @endif
             @endforeach
         </div>
 
         <!-- Form kirim pesan -->
-        @if($isFriend)
-            {{-- FORM KIRIM PESAN --}}
-            <form action="{{ route('chat.send', $conversation->id) }}" method="POST" 
-                enctype="multipart/form-data"
-                class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
-                @csrf
-                <textarea name="content" id="chatInput"
-                    class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none overflow-y-auto text-[13px] h-[40px]"
-                    placeholder="Tulis pesan..." required></textarea>
+        @php
+            $pivot = $conversation->users->firstWhere('id', auth()->id())?->pivot;
+            $isLeft = $isGroup && !is_null($pivot?->deleted_at);
+        @endphp
 
-                <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
-                            rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
-                    📎
-                    <input type="file" name="attachment" class="hidden"
-                        accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a">
-                </label>
+        @if($isGroup)
+            {{-- ==== GROUP CHAT ==== --}}
+            @if(!$isLeft)
+                {{-- Masih anggota → boleh kirim pesan --}}
+                <form action="{{ route('chat.send', $conversation->id) }}" method="POST" 
+                    enctype="multipart/form-data"
+                    class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
+                    @csrf
 
-                <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
-                            rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
-                    🎤
-                    <input type="file" name="voice_note" class="hidden" accept="audio/*">
-                </label>
+                    <textarea name="content" id="chatInput"
+                        class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none overflow-y-auto text-[13px] h-[40px]"
+                        placeholder="Tulis pesan..." required></textarea>
 
-                <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg 
-                            hover:bg-rose-700 text-[14px] flex items-center">
-                    Kirim
-                </button>
-            </form>
+                    <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
+                                rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
+                        📎
+                        <input type="file" name="attachment" class="hidden"
+                            accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a">
+                    </label>
+
+                    <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
+                                rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
+                        🎤
+                        <input type="file" name="voice_note" class="hidden" accept="audio/*">
+                    </label>
+
+                    <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg 
+                                hover:bg-rose-700 text-[14px] flex items-center">
+                        Kirim
+                    </button>
+                </form>
+            @else
+                {{-- Sudah keluar grup --}}
+                <div class="text-center text-gray-500 text-sm italic py-3 sticky bottom-0 bg-white border-t">
+                    Kamu telah keluar dari grup ini. Chat hanya dapat dibaca.
+                </div>
+            @endif
+
         @else
-            <div class="text-center text-gray-500 text-sm italic py-3 sticky bottom-0 bg-white border-t">
-                @if($isBlocked)
-                    Kalian tidak dapat saling mengirim pesan.
-                @elseif($friendship && $friendship->status !== 'accepted')
-                    Kalian sudah tidak berteman. Chat hanya dapat dibaca.
-                @else
-                    Chat tidak bisa digunakan.
-                @endif
-            </div>
+            {{-- ==== PRIVATE CHAT ==== --}}
+            @if($isFriend)
+                {{-- Bisa kirim pesan --}}
+                <form action="{{ route('chat.send', $conversation->id) }}" method="POST" 
+                    enctype="multipart/form-data"
+                    class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
+                    @csrf
+
+                    <textarea name="content" id="chatInput"
+                        class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none overflow-y-auto text-[13px] h-[40px]"
+                        placeholder="Tulis pesan..." required></textarea>
+
+                    <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
+                                rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
+                        📎
+                        <input type="file" name="attachment" class="hidden"
+                            accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a">
+                    </label>
+
+                    <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
+                                rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
+                        🎤
+                        <input type="file" name="voice_note" class="hidden" accept="audio/*">
+                    </label>
+
+                    <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg 
+                                hover:bg-rose-700 text-[14px] flex items-center">
+                        Kirim
+                    </button>
+                </form>
+            @else
+                {{-- Tidak bisa kirim --}}
+                <div class="text-center text-gray-500 text-sm italic py-3 sticky bottom-0 bg-white border-t">
+                    @if($isBlocked)
+                        Kalian tidak dapat saling mengirim pesan.
+                    @elseif($friendship && $friendship->status !== 'accepted')
+                        Kalian sudah tidak berteman. Chat hanya dapat dibaca.
+                    @else
+                        Chat tidak bisa digunakan.
+                    @endif
+                </div>
+            @endif
         @endif
     </div>
 

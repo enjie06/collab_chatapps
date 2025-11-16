@@ -38,7 +38,7 @@ class ProfileController extends Controller
             $request->user()->email_verified_at = null;
         }
 
-         // bagian upload avatar
+        // bagian upload avatar
         if ($request->hasFile('avatar')) {
             $avatarPath = $request->file('avatar')->store('avatars', 'public');
             $user = $request->user();
