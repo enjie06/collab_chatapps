@@ -18,7 +18,7 @@ class MessageSent implements ShouldBroadcast
     public function __construct(Message $message)
     {
         // Pastikan relasi user terload
-        $this->message = $message->load('user');
+        $this->message = $message->load('user', 'replyTo.user');
     }
 
     public function broadcastOn()
@@ -40,6 +40,14 @@ class MessageSent implements ShouldBroadcast
                 'id' => $this->message->user->id,
                 'name' => $this->message->user->name,
             ],
+            'reply_to' => $this->message->replyTo ? [
+
+            'id' => $this->message->replyTo->id,
+                'content' => $this->message->replyTo->content,
+                'user' => [
+                    'name' => $this->message->replyTo->user->name,
+                ]
+            ] : null,
             'created_at' => $this->message->created_at->format('H:i'),
         ];
     }
