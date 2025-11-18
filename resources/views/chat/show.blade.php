@@ -346,6 +346,29 @@
                     class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
                     @csrf
 
+                    <!-- PREVIEW FILE (Seperti WhatsApp) -->
+                    <div id="filePreview" class="hidden mb-2 p-3 bg-gray-100 rounded-lg border">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span id="fileName" class="text-sm font-medium text-gray-700"></span>
+                                <p id="fileSize" class="text-xs text-gray-500"></p>
+                            </div>
+                            <button type="button" onclick="clearFile()" class="text-red-500 hover:text-red-700 text-lg">×</button>
+                        </div>
+                        
+                        <!-- Preview Gambar -->
+                        <img id="imagePreview" class="hidden max-w-xs mt-2 rounded-lg shadow">
+                        
+                        <!-- Preview Video -->
+                        <video id="videoPreview" class="hidden max-w-xs mt-2 rounded-lg shadow" controls></video>
+                        
+                        <!-- Untuk file lainnya -->
+                        <div id="otherFilePreview" class="hidden mt-2 text-center">
+                            <div class="text-4xl">📄</div>
+                            <p class="text-xs text-gray-600 mt-1">File siap dikirim</p>
+                        </div>
+                    </div>
+
                     <textarea name="content" id="chatInput"
                         class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none overflow-y-auto text-[13px] h-[40px]"
                         placeholder="Tulis pesan..." required></textarea>
@@ -353,14 +376,9 @@
                     <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
                                 rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
                         📎
-                        <input type="file" name="attachment" class="hidden"
-                            accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a">
-                    </label>
-
-                    <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
-                                rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
-                        🎤
-                        <input type="file" name="voice_note" class="hidden" accept="audio/*">
+                        <input type="file" name="attachment" id="fileInput" class="hidden"
+                            accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a"
+                            onchange="previewFile(this)">
                     </label>
 
                     <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg 
@@ -462,6 +480,94 @@
                 chat.scrollTop = chat.scrollHeight;
             }, 10);
         });
+    });
+
+    // === FUNGSI PREVIEW FILE ===
+    function previewFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const preview = document.getElementById('filePreview');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const imagePreview = document.getElementById('imagePreview');
+        const videoPreview = document.getElementById('videoPreview');
+        const otherFilePreview = document.getElementById('otherFilePreview');
+        const textarea = document.getElementById('chatInput'); // AMBIL TEXTAREA
+
+        // Reset semua preview
+        imagePreview.classList.add('hidden');
+        videoPreview.classList.add('hidden');
+        otherFilePreview.classList.add('hidden');
+        
+        // Tampilkan info file
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        preview.classList.remove('hidden');
+
+        // ✅ OTOMATIS ISI TEXTAREA DENGAN NAMA FILE
+        // Ini yang bikin required terpenuhi!
+        if (!textarea.value.trim()) {
+            textarea.value = `Mengirim file: ${file.name}`;
+        }
+
+        // Preview berdasarkan tipe file
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.classList.remove('hidden');
+            }
+            reader.readAsDataURL(file);
+        }
+        else if (file.type.startsWith('video/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                videoPreview.src = e.target.result;
+                videoPreview.classList.remove('hidden');
+            }
+            reader.readAsDataURL(file);
+        }
+        else {
+            // Untuk file lainnya (PDF, DOC, dll)
+            otherFilePreview.classList.remove('hidden');
+        }
+    }
+
+    // Format ukuran file
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Hapus file preview
+    function clearFile() {
+        const textarea = document.getElementById('chatInput');
+        
+        // ✅ HAPUS TEXT OTOMATIS JIKA USER HAPUS FILE
+        if (textarea.value.startsWith('Mengirim file:')) {
+            textarea.value = '';
+        }
+        
+        document.getElementById('fileInput').value = '';
+        document.getElementById('filePreview').classList.add('hidden');
+    }
+
+    // === VALIDASI FORM TAMBAHAN ===
+    document.querySelector('form[action*="send"]')?.addEventListener("submit", function(e) {
+        const textarea = this.querySelector('textarea[name="content"]');
+        const file = this.querySelector('input[name="attachment"]').files[0];
+        
+        // ✅ JIKA ADA FILE TAPI TEXTAREA MASIH KOSONG, OTOMATIS ISI LAGI (double safety)
+        if (file && !textarea.value.trim()) {
+            textarea.value = `Mengirim file: ${file.name}`;
+        }
+        
+        // Biarkan HTML5 validation yang handle required
+        // Tidak perlu e.preventDefault(), biarkan form validation normal
     });
     </script>
 </x-app-layout>
