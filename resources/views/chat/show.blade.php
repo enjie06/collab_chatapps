@@ -247,6 +247,18 @@
                         <div class="px-3 py-2 rounded-xl leading-snug break-words
                             {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-900 rounded-bl-none' }}">
 
+                            {{-- 🔥 TAMPILKAN REPLY JIKA ADA --}}
+                            @if($message->replyTo)
+                                <div class="mb-2 p-2 bg-{{ $isMe ? 'rose-500' : 'gray-300' }} rounded-lg border-l-4 border-{{ $isMe ? 'rose-300' : 'gray-400' }}">
+                                    <p class="text-xs font-semibold text-{{ $isMe ? 'rose-100' : 'gray-600' }}">
+                                        Membalas: {{ $message->replyTo->user->name }}
+                                    </p>
+                                    <p class="text-sm text-{{ $isMe ? 'rose-50' : 'gray-700' }} truncate">
+                                        {{ $message->replyTo->content ?: '[File]' }}
+                                    </p>
+                                </div>
+                            @endif
+
                             {{-- Lampiran --}}
                             @if($message->attachment)
                                 @php $att = $message->attachment; @endphp
@@ -279,6 +291,16 @@
                                 {{ $message->created_at->format('H:i') }}
                             </div>
                         </div>
+
+                        {{-- 🔥 BUTTON REPLY --}}
+                        @if($canSend)
+                        <div class="flex justify-{{ $isMe ? 'end' : 'start' }} mt-1">
+                            <button onclick="replyToMessage({{ $message->id }}, '{{ $message->user->name }}', `{{ $message->content ?: '[File]' }}`)" 
+                                    class="text-xs text-gray-500 hover:text-rose-600 px-2 py-1">
+                                🔄 Balas
+                            </button>
+                        </div>
+                        @endif
                     </div>
                 </div>
 
@@ -307,6 +329,22 @@
                     enctype="multipart/form-data"
                     class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
                     @csrf
+
+                    <!-- 🔽 TAMBAH INI DI DALAM FORM 🔽 -->
+                    <!-- HIDDEN INPUT UNTUK REPLY -->
+                    <input type="hidden" name="reply_to_id" id="replyToId">
+
+                    <!-- REPLY PREVIEW -->
+                    <div id="replyPreview" class="hidden mb-2 p-2 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <p class="text-xs text-blue-600 font-semibold">Membalas pesan</p>
+                                <p id="replyContent" class="text-sm text-gray-700 truncate"></p>
+                            </div>
+                            <button type="button" onclick="cancelReply()" class="text-gray-500 hover:text-gray-700">×</button>
+                        </div>
+                    </div>
+                    <!-- 🔼 SAMPAI SINI 🔼 -->
 
                     <!-- PREVIEW FILE (Seperti WhatsApp) -->
                     <div id="filePreview" class="hidden mb-2 p-3 bg-gray-100 rounded-lg border">
@@ -363,6 +401,22 @@
                     enctype="multipart/form-data"
                     class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
                     @csrf
+
+                    <!-- 🔽 TAMBAH INI DI DALAM FORM 🔽 -->
+                    <!-- HIDDEN INPUT UNTUK REPLY -->
+                    <input type="hidden" name="reply_to_id" id="replyToId">
+
+                    <!-- REPLY PREVIEW -->
+                    <div id="replyPreview" class="hidden mb-2 p-2 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <p class="text-xs text-blue-600 font-semibold">Membalas pesan</p>
+                                <p id="replyContent" class="text-sm text-gray-700 truncate"></p>
+                            </div>
+                            <button type="button" onclick="cancelReply()" class="text-gray-500 hover:text-gray-700">×</button>
+                        </div>
+                    </div>
+                    <!-- 🔼 SAMPAI SINI 🔼 -->
 
                     <!-- PREVIEW FILE (Seperti WhatsApp) -->
                     <div id="filePreview" class="hidden mb-2 p-3 bg-gray-100 rounded-lg border">
@@ -586,6 +640,38 @@
         
         // Biarkan HTML5 validation yang handle required
         // Tidak perlu e.preventDefault(), biarkan form validation normal
+    });
+
+    // === FUNGSI REPLY MESSAGE ===
+    function replyToMessage(messageId, userName, messageContent) {
+        // Set hidden input
+        document.getElementById('replyToId').value = messageId;
+        
+        // Tampilkan preview
+        document.getElementById('replyContent').textContent = messageContent;
+        document.getElementById('replyPreview').classList.remove('hidden');
+        
+        // Scroll ke form
+        document.getElementById('chatInput').focus();
+        document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Batalkan reply
+    function cancelReply() {
+        document.getElementById('replyToId').value = '';
+        document.getElementById('replyPreview').classList.add('hidden');
+    }
+
+    // Jika user mulai ngetik, jangan batalkan reply otomatis
+    document.getElementById('chatInput')?.addEventListener('input', function() {
+        // Biarkan reply tetap aktif saat user ngetik
+    });
+
+    // Reset reply ketika form terkirim
+    document.querySelector('form[action*="send"]')?.addEventListener("submit", function() {
+        setTimeout(() => {
+            cancelReply();
+        }, 1000);
     });
     </script>
 </x-app-layout>
