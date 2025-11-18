@@ -239,6 +239,7 @@ class ChatController extends Controller
             'conversation_id' => $conversation->id,
             'user_id'         => $me,
             'content'         => $request->content,
+            'reply_to_id'     => $request->reply_to_id
         ]);
 
         // Simpan attachment
