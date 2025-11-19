@@ -10,7 +10,7 @@
 
         <!-- FOTO & INFO GRUP -->
         <div class="flex flex-col items-center mb-4">
-            <img src="{{ $group->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.jpeg') }}"
+            <img src="{{ $group->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.png') }}"
                  class="w-20 h-20 rounded-full border object-cover mb-3">
 
             <h2 class="text-lg font-semibold text-gray-800">{{ $group->name }}</h2>

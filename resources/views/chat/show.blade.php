@@ -52,7 +52,7 @@
             {{-- === JIKA GRUP === --}}
             @if($isGroup)
                 <div class="flex items-center gap-3 flex-1">
-                    <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.jpeg') }}"
+                    <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.png') }}"
                         class="w-10 h-10 rounded-full object-cover border">
 
                     <div class="leading-tight">
