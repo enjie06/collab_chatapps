@@ -370,7 +370,7 @@
                     </div>
 
                     <textarea name="content" id="chatInput"
-                        class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none overflow-y-auto text-[13px] h-[40px]"
+                        class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none text-[13px] overflow-y-auto leading-[20px]"
                         placeholder="Tulis pesan..." required></textarea>
 
                     <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
@@ -539,18 +539,14 @@
     // Merapikan textarea input pesan
     document.addEventListener("DOMContentLoaded", () => {
         const textarea = document.getElementById("chatInput");
-        const chat = document.getElementById("chat-body");
-        const maxHeight = 150; // tinggi maksimal textarea (opsional)
+        const maxHeight = 90; // maksimal 2–3 baris
+
+        // Set tinggi awal 1 baris
+        textarea.style.height = "40px";
 
         textarea.addEventListener("input", () => {
-            // Resize otomatis
-            textarea.style.height = "auto";
+            textarea.style.height = "40px"; // reset ke 1 baris
             textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
-
-            // Selalu scroll ke bawah setelah tinggi textarea berubah
-            setTimeout(() => {
-                chat.scrollTop = chat.scrollHeight;
-            }, 10);
         });
     });
 
@@ -565,7 +561,7 @@
         const imagePreview = document.getElementById('imagePreview');
         const videoPreview = document.getElementById('videoPreview');
         const otherFilePreview = document.getElementById('otherFilePreview');
-        const textarea = document.getElementById('chatInput'); // AMBIL TEXTAREA
+        const textarea = document.getElementById('chatInput');
 
         // Reset semua preview
         imagePreview.classList.add('hidden');
