@@ -13,7 +13,19 @@ class Message extends Model
         'conversation_id',
         'user_id',
         'content',
+        'reply_to_id'
     ];
+
+    // RELASI UNTUK REPLY
+    public function replyTo()
+    {
+        return $this->belongsTo(Message::class, 'reply_to_id');
+    }
+
+    public function replies()
+    {
+        return $this->hasMany(Message::class, 'reply_to_id');
+    }
 
     // 🔹 Relasi ke conversation
     public function conversation()

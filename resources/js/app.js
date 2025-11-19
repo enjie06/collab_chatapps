@@ -15,6 +15,17 @@ window.Echo.join(`conversation.${conversationId}`)
         }`;
 
         bubble.innerHTML = `
+            ${e.reply_to ? `
+                <div class="mb-2 p-2 bg-${e.user.id == userId ? 'rose-500' : 'gray-300'} rounded-lg border-l-4 border-${e.user.id == userId ? 'rose-300' : 'gray-400'}">
+                    <p class="text-xs font-semibold text-${e.user.id == userId ? 'rose-100' : 'gray-600'}">
+                        Membalas: ${e.reply_to.user.name}
+                    </p>
+                    <p class="text-sm text-${e.user.id == userId ? 'rose-50' : 'gray-700'} truncate">
+                        ${e.reply_to.content || '[File]'}
+                    </p>
+                </div>
+            ` : ''}
+            
             <div class="max-w-[70%] px-3 py-2 rounded-xl break-words 
                 ${e.user.id == userId 
                     ? "bg-rose-600 text-white rounded-br-none"
