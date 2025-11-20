@@ -248,13 +248,14 @@
                             {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-900 rounded-bl-none' }}">
 
                             {{-- 🔥 TAMPILKAN REPLY JIKA ADA --}}
-                            @if($message->replyTo)
+                            @php $reply = $message->replyTo; @endphp
+                            @if($reply)
                                 <div class="mb-2 p-2 bg-{{ $isMe ? 'rose-500' : 'gray-300' }} rounded-lg border-l-4 border-{{ $isMe ? 'rose-300' : 'gray-400' }}">
                                     <p class="text-xs font-semibold text-{{ $isMe ? 'rose-100' : 'gray-600' }}">
                                         Membalas: {{ $message->replyTo->user->name }}
                                     </p>
                                     <p class="text-sm text-{{ $isMe ? 'rose-50' : 'gray-700' }} truncate">
-                                        {{ $message->replyTo->content ?: '[File]' }}
+                                        {{ $reply->content ?: '[File]' }}
                                     </p>
                                 </div>
                             @endif

@@ -151,7 +151,7 @@
             @forelse($conversations as $conversation)
                 @php
                     $isGroup = $conversation->type === 'group';
-                    $lastMsg = $conversation->messages->last();
+                    $lastMsg = $conversation->last_visible_message;
                     $myRead = $conversation->users->firstWhere('id', auth()->id())?->pivot?->last_read_message_id ?? 0;
                     $hasUnread = $lastMsg && $lastMsg->user_id != auth()->id() && $myRead < $lastMsg->id;
 
@@ -192,7 +192,7 @@
                     </div>
 
                     @if($hasUnread)
-                        <span class="absolute top-3 right-3 w-3 h-3 bg-rose-600 rounded-full"></span>
+                        <span class="absolute top-1/2 -translate-y-1/2 right-3 w-3 h-3 bg-rose-600 rounded-full"></span>
                     @endif
                 </a>
 
