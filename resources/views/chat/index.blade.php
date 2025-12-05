@@ -96,7 +96,7 @@
                     class="block p-3 mb-2 bg-white border rounded-lg hover:bg-rose-50 transition">
 
                     <div class="flex items-center gap-3">
-                        <img src="{{ $group->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.jpeg') }}"
+                        <img src="{{ $group->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.png') }}"
                             class="w-9 h-9 rounded-full object-cover border">
 
                         <div class="flex-1">
@@ -151,7 +151,7 @@
             @forelse($conversations as $conversation)
                 @php
                     $isGroup = $conversation->type === 'group';
-                    $lastMsg = $conversation->messages->last();
+                    $lastMsg = $conversation->last_visible_message;
                     $myRead = $conversation->users->firstWhere('id', auth()->id())?->pivot?->last_read_message_id ?? 0;
                     $hasUnread = $lastMsg && $lastMsg->user_id != auth()->id() && $myRead < $lastMsg->id;
 
@@ -169,7 +169,7 @@
                         {{-- FOTO --}}
                         @if($isGroup)
                             <div class="relative">
-                                <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.jpeg') }}"
+                                <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.png') }}"
                                     class="w-10 h-10 rounded-full object-cover border">
                             </div>
                         @else
@@ -192,7 +192,7 @@
                     </div>
 
                     @if($hasUnread)
-                        <span class="absolute top-3 right-3 w-3 h-3 bg-rose-600 rounded-full"></span>
+                        <span class="absolute top-1/2 -translate-y-1/2 right-3 w-3 h-3 bg-rose-600 rounded-full"></span>
                     @endif
                 </a>
 
