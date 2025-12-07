@@ -1,4 +1,34 @@
 <x-app-layout>
+    <style>
+        /* Image thumbnail hover effect */
+        .img-thumbnail {
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .img-thumbnail:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Modal animation */
+        #imageModal {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Responsive image in chat */
+        @media (max-width: 640px) {
+            .chat-image img {
+                max-width: 150px !important;
+                max-height: 150px !important;
+            }
+        }
+    </style>
     @php
         $isGroup = $conversation->type === 'group';
 
@@ -262,29 +292,51 @@
 
                             {{-- Lampiran --}}
                             @if($message->attachment)
-                                @php $att = $message->attachment; @endphp
+    @php $att = $message->attachment; @endphp
 
-                                @if(str_contains($att->file_type, 'image'))
-                                    <img src="{{ asset('storage/'.$att->file_path) }}" class="rounded-lg max-w-full mb-2">
-                                @endif
-
-                                @if($att->file_type === 'video')
-                                    <video controls class="rounded-lg max-w-full mb-2">
-                                        <source src="{{ asset('storage/'.$att->file_path) }}">
-                                    </video>
-                                @endif
-
-                                @if($att->file_type === 'audio')
-                                    <audio controls class="w-full mb-2">
-                                        <source src="{{ asset('storage/'.$att->file_path) }}">
-                                    </audio>
-                                @endif
-
-                                @if($att->file_type === 'file')
-                                    <a href="{{ asset('storage/'.$att->file_path) }}"
-                                        class="text-blue-600 underline block mb-2">📄 Download File</a>
-                                @endif
-                            @endif
+    @if(str_contains($att->file_type, 'image'))
+        @php
+            // Hitung file size
+            $filePath = 'public/' . $att->file_path;
+            $fileSize = Storage::exists($filePath) ? Storage::size($filePath) : 0;
+            
+            // Format file size manual
+            $formattedSize = '';
+            if ($fileSize > 0) {
+                $units = ['B', 'KB', 'MB', 'GB'];
+                $i = 0;
+                while ($fileSize >= 1024 && $i < count($units) - 1) {
+                    $fileSize /= 1024;
+                    $i++;
+                }
+                $formattedSize = round($fileSize, 2) . ' ' . $units[$i];
+            }
+        @endphp
+        
+        <div class="mb-2">
+            <!-- Thumbnail yang bisa diklik untuk modal -->
+            <a href="#" onclick="showImageModal('{{ asset('storage/'.$att->file_path) }}', '{{ $message->user->name }}', '{{ $message->created_at->format('d M Y H:i') }}', '{{ $formattedSize }}')" 
+               class="cursor-pointer block chat-image">
+                <img src="{{ asset('storage/'.$att->file_path) }}" 
+                     class="rounded-lg max-w-[200px] max-h-[200px] object-cover hover:opacity-90 transition-opacity duration-200 border img-thumbnail">
+            </a>
+            
+            <!-- Download button kecil -->
+            <div class="mt-1 flex items-center gap-2 text-xs">
+                <span class="text-gray-500 text-[10px]">
+                    {{ $formattedSize }}
+                </span>
+                <a href="{{ route('chat.download', ['attachment' => $att->id]) }}" 
+                   class="text-blue-600 hover:text-blue-800 text-[10px] flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v-6m0 0l-3 3m3-3l3 3M3 21h18"/>
+                    </svg>
+                    Download
+                </a>
+            </div>
+        </div>
+    @endif
+@endif
 
                             {!! nl2br(e($message->content)) !!}
 
@@ -639,6 +691,54 @@
         // Tidak perlu e.preventDefault(), biarkan form validation normal
     });
 
+    // === FUNGSI UNTUK MODAL GAMBAR ===
+    function showImageModal(imageSrc, senderName, sentTime, fileSize = '') {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const imageSender = document.getElementById('imageSender');
+        const imageTime = document.getElementById('imageTime');
+        const imageSize = document.getElementById('imageSize');
+        const downloadBtn = document.getElementById('modalDownloadBtn');
+        
+        // Set gambar dan info
+        modalImage.src = imageSrc;
+        imageSender.textContent = `Dikirim oleh: ${senderName}`;
+        imageTime.textContent = `Waktu: ${sentTime}`;
+        imageSize.textContent = fileSize ? `Ukuran: ${fileSize}` : '';
+        
+        // Set download link
+        downloadBtn.href = imageSrc;
+        downloadBtn.download = senderName + '_' + Date.now() + '.jpg';
+        
+        // Tampilkan modal
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Tutup modal dengan ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeImageModal();
+        }
+    });
+
+    // Format file size helper (jika belum ada)
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
     // === FUNGSI REPLY MESSAGE ===
     function replyToMessage(messageId, userName, messageContent) {
         // Set hidden input
@@ -671,4 +771,35 @@
         }, 1000);
     });
     </script>
+    <!-- MODAL UNTUK PREVIEW GAMBAR BESAR -->
+<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex-col items-center justify-center p-4">
+    <!-- Tombol tutup -->
+    <button onclick="closeImageModal()" 
+            class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 z-10">
+        ✕
+    </button>
+    
+    <!-- Tombol download di modal -->
+    <a id="modalDownloadBtn" 
+       class="absolute top-4 left-4 text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg flex items-center gap-2 z-10">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v-6m0 0l-3 3m3-3l3 3M3 21h18"/>
+        </svg>
+        Download
+    </a>
+    
+    <!-- Gambar -->
+    <div class="max-w-4xl max-h-[80vh] flex items-center justify-center">
+        <img id="modalImage" src="" 
+             class="max-w-full max-h-[80vh] object-contain rounded-lg"
+             onclick="closeImageModal()">
+    </div>
+    
+    <!-- Info gambar -->
+    <div class="mt-4 text-white text-center">
+        <p id="imageSender" class="font-medium"></p>
+        <p id="imageTime" class="text-sm text-gray-300"></p>
+        <p id="imageSize" class="text-sm text-gray-300"></p>
+    </div>
+</div>
 </x-app-layout>
