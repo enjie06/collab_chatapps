@@ -67,4 +67,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/group/{id}/delete', [GroupController::class, 'delete'])->name('group.delete');
 });
 
+Route::get('/chat/download/{attachment}', [ChatController::class, 'downloadAttachment'])
+    ->name('chat.download')
+    ->middleware('auth');
+
 require __DIR__.'/auth.php';
