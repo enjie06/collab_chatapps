@@ -365,4 +365,31 @@ class ChatController extends Controller
 
         return redirect()->route('chat.index')->with('success', 'Chat berhasil dihapus.');
     }
+
+    public function downloadAttachment($attachmentId)
+{
+    $attachment = \App\Models\Attachment::findOrFail($attachmentId);
+    
+    // Cek apakah user berhak mengakses file ini
+    $message = $attachment->message;
+    $conversation = $message->conversation;
+    
+    if (!$conversation->users->contains(auth()->id())) {
+        abort(403, 'Unauthorized');
+    }
+    
+    $filePath = storage_path('app/public/' . $attachment->file_path);
+    
+    if (!file_exists($filePath)) {
+        abort(404, 'File not found');
+    }
+    
+    // Buat nama file yang lebih friendly
+    $originalName = basename($attachment->file_path);
+    $userName = $message->user->name;
+    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $userName);
+    $fileName = $safeName . '_' . $originalName;
+    
+    return response()->download($filePath, $fileName);
+}
 }
