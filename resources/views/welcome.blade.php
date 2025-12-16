@@ -36,8 +36,12 @@
         <!-- TYPING TEXT -->
         <h1 id="typingTitle" class="text-4xl font-serif mb-4 typing"></h1>
 
-        <div class="flex justify-center mb-10">
-            <i class="fa-solid fa-paper-plane text-[90px] text-pink-500"></i>
+       <div class="flex justify-center mb-10">
+            <img 
+                src="{{ asset('images/logo fluffy.jpg') }}" 
+                alt="FluffyChat Logo"
+                class="w-28 h-28 rounded-full shadow-md"
+            >
         </div>
 
         <a href="{{ route('login') }}"
@@ -46,7 +50,7 @@
         </a>
 
         <a href="{{ route('register') }}"
-           class="block w-full py-3 rounded-full border-2 border-pink-500 text-pink-500 text-lg font-semibold hover:bg-pink-500 hover:text-white transition">
+           class="block w-full py-3 rounded-full border-2 border-rose-500 text-rose-500 text-lg font-semibold hover:bg-rose-600 hover:text-white transition">
             Register
         </a>
 
