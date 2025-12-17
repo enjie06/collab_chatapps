@@ -11,6 +11,22 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
+        /* Chat Input */
+        .chatInput {
+            min-height: 45px;
+            max-height: 120px;
+            resize: none;
+            width: 100%;
+            border-radius: 9999px;
+            padding: 10px 14px;
+            line-height: 20px;
+        }
+
+        .mention {
+            color: #2563eb;
+            font-weight: 600;
+        }
+
         /* Modal animation */
         #imageModal {
             animation: fadeIn 0.3s ease;
@@ -277,7 +293,7 @@
                         <div class="px-3 py-2 rounded-xl leading-snug break-words
                             {{ $isMe ? 'bg-rose-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-900 rounded-bl-none' }}">
 
-                            {{-- 🔥 TAMPILKAN REPLY JIKA ADA --}}
+                            {{-- TAMPILKAN REPLY JIKA ADA --}}
                             @php $reply = $message->replyTo; @endphp
                             @if($reply)
                                 <div class="mb-2 p-2 bg-{{ $isMe ? 'rose-500' : 'gray-300' }} rounded-lg border-l-4 border-{{ $isMe ? 'rose-300' : 'gray-400' }}">
@@ -292,60 +308,53 @@
 
                             {{-- Lampiran --}}
                             @if($message->attachment)
-    @php $att = $message->attachment; @endphp
+                                @php $att = $message->attachment; @endphp
 
-    @if(str_contains($att->file_type, 'image'))
-        @php
-            // Hitung file size
-            $filePath = 'public/' . $att->file_path;
-            $fileSize = Storage::exists($filePath) ? Storage::size($filePath) : 0;
-            
-            // Format file size manual
-            $formattedSize = '';
-            if ($fileSize > 0) {
-                $units = ['B', 'KB', 'MB', 'GB'];
-                $i = 0;
-                while ($fileSize >= 1024 && $i < count($units) - 1) {
-                    $fileSize /= 1024;
-                    $i++;
-                }
-                $formattedSize = round($fileSize, 2) . ' ' . $units[$i];
-            }
-        @endphp
-        
-        <div class="mb-2">
-            <!-- Thumbnail yang bisa diklik untuk modal -->
-            <a href="#" onclick="showImageModal('{{ asset('storage/'.$att->file_path) }}', '{{ $message->user->name }}', '{{ $message->created_at->format('d M Y H:i') }}', '{{ $formattedSize }}')" 
-               class="cursor-pointer block chat-image">
-                <img src="{{ asset('storage/'.$att->file_path) }}" 
-                     class="rounded-lg max-w-[200px] max-h-[200px] object-cover hover:opacity-90 transition-opacity duration-200 border img-thumbnail">
-            </a>
-            
-            <!-- Download button kecil -->
-            <div class="mt-1 flex items-center gap-2 text-xs">
-                <span class="text-gray-500 text-[10px]">
-                    {{ $formattedSize }}
-                </span>
-                <a href="{{ route('chat.download', ['attachment' => $att->id]) }}" 
-                   class="text-blue-600 hover:text-blue-800 text-[10px] flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v-6m0 0l-3 3m3-3l3 3M3 21h18"/>
-                    </svg>
-                    Download
-                </a>
-            </div>
-        </div>
-    @endif
-@endif
+                                {{-- IMAGE --}}
+                                @if(str_contains($att->file_type, 'image'))
+                                    <div class="mb-2">
+                                        <a href="#"
+                                        onclick="showImageModal(
+                                                '{{ asset('storage/'.$att->file_path) }}',
+                                                '{{ $message->user->name }}',
+                                                '{{ $message->created_at->format('d M Y H:i') }}'
+                                        )"
+                                        class="block chat-image">
+                                            <img src="{{ asset('storage/'.$att->file_path) }}"
+                                                class="rounded-lg max-w-[200px] max-h-[200px] object-cover border img-thumbnail">
+                                        </a>
+                                    </div>
 
-                            {!! nl2br(e($message->content)) !!}
+                                {{-- NON IMAGE --}}
+                                @else
+                                    <div class="mb-1 p-3 rounded-lg
+                                        {{ $isMe ? 'bg-rose-500 text-white' : 'bg-gray-300 text-gray-900' }}">
+                                        <div class="flex items-center gap-3">
+                                            <div class="text-2xl">📄</div>
+
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium truncate">
+                                                    {{ $att->original_name }}
+                                                </p>
+
+                                                <a href="{{ route('chat.download', ['attachment' => $att->id]) }}"
+                                                class="text-xs underline opacity-90">
+                                                    Download
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
+
+                            {!! nl2br(renderMentions($message->content, auth()->user())) !!}
 
                             <div class="text-[10px] opacity-70 mt-1 text-right">
                                 {{ $message->created_at->format('H:i') }}
                             </div>
                         </div>
 
-                        {{-- 🔥 BUTTON REPLY --}}
+                        {{-- BUTTON REPLY --}}
                         @if($canSend)
                         <div class="flex justify-{{ $isMe ? 'end' : 'start' }} mt-1">
                             <button onclick="replyToMessage({{ $message->id }}, '{{ $message->user->name }}', `{{ $message->content ?: '[File]' }}`)" 
@@ -380,10 +389,10 @@
                 {{-- Masih anggota → boleh kirim pesan --}}
                 <form action="{{ route('chat.send', $conversation->id) }}" method="POST" 
                     enctype="multipart/form-data"
-                    class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
+                    class="relative flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
                     @csrf
 
-                    <!-- 🔽 TAMBAH INI DI DALAM FORM 🔽 -->
+                    <!-- TAMBAH INI DI DALAM FORM -->
                     <!-- HIDDEN INPUT UNTUK REPLY -->
                     <input type="hidden" name="reply_to_id" id="replyToId">
 
@@ -397,7 +406,7 @@
                             <button type="button" onclick="cancelReply()" class="text-gray-500 hover:text-gray-700">×</button>
                         </div>
                     </div>
-                    <!-- 🔼 SAMPAI SINI 🔼 -->
+                    <!-- SAMPAI SINI -->
 
                     <!-- PREVIEW FILE (Seperti WhatsApp) -->
                     <div id="filePreview" class="hidden mb-2 p-3 bg-gray-100 rounded-lg border">
@@ -422,9 +431,16 @@
                         </div>
                     </div>
 
-                    <textarea name="content" id="chatInput"
-                        class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none text-[13px] overflow-y-auto leading-[20px]"
-                        placeholder="Tulis pesan..." required></textarea>
+                    <div class="relative flex-1">
+                        <textarea name="content"
+                            class="chatInput w-full border rounded-full px-4 py-2 text-sm resize-none"
+                            placeholder="Tulis pesan..."
+                            required></textarea>
+
+                        <div id="mentionBox"
+                            class="hidden absolute left-0 bottom-full mb-1 w-72 bg-white border rounded-lg shadow-md max-h-40 overflow-y-auto text-sm z-50">
+                        </div>
+                    </div>
 
                     <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] 
                                 rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
@@ -450,12 +466,12 @@
             {{-- ==== PRIVATE CHAT ==== --}}
             @if($isFriend)
                 {{-- Bisa kirim pesan --}}
-                <form action="{{ route('chat.send', $conversation->id) }}" method="POST" 
-                    enctype="multipart/form-data"
-                    class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
+                <form class="flex items-end gap-2 p-2 border-t bg-white sticky bottom-0"
+                    action="{{ route('chat.send', $conversation->id) }}"
+                    method="POST" enctype="multipart/form-data">
                     @csrf
 
-                    <!-- 🔽 TAMBAH INI DI DALAM FORM 🔽 -->
+                    <!-- TAMBAH INI DI DALAM FORM -->
                     <!-- HIDDEN INPUT UNTUK REPLY -->
                     <input type="hidden" name="reply_to_id" id="replyToId">
 
@@ -469,7 +485,7 @@
                             <button type="button" onclick="cancelReply()" class="text-gray-500 hover:text-gray-700">×</button>
                         </div>
                     </div>
-                    <!-- 🔼 SAMPAI SINI 🔼 -->
+                    <!-- SAMPAI SINI -->
 
                     <!-- PREVIEW FILE (Seperti WhatsApp) -->
                     <div id="filePreview" class="hidden mb-2 p-3 bg-gray-100 rounded-lg border">
@@ -494,7 +510,7 @@
                         </div>
                     </div>
 
-                    <textarea name="content" id="chatInput"
+                    <textarea name="content" class="chatInput"
                         class="flex-1 border rounded-lg px-2 py-1 focus:border-rose-500 resize-none overflow-y-auto text-[13px] h-[40px]"
                         placeholder="Tulis pesan..." required></textarea>
 
@@ -526,7 +542,50 @@
         @endif
     </div>
 
-    <script>
+    <!-- MODAL UNTUK PREVIEW GAMBAR BESAR -->
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex-col items-center justify-center p-4">
+        <!-- Tombol tutup -->
+        <button onclick="closeImageModal()" 
+                class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 z-10">
+            ✕
+        </button>
+        
+        <!-- Tombol download di modal -->
+        <a id="modalDownloadBtn" 
+        class="absolute top-4 left-4 text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg flex items-center gap-2 z-10">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v-6m0 0l-3 3m3-3l3 3M3 21h18"/>
+            </svg>
+            Download
+        </a>
+        
+        <!-- Gambar -->
+        <div class="max-w-4xl max-h-[80vh] flex items-center justify-center">
+            <img id="modalImage" src="" 
+                class="max-w-full max-h-[80vh] object-contain rounded-lg"
+                onclick="closeImageModal()">
+        </div>
+        
+        <!-- Info gambar -->
+        <div class="mt-4 text-white text-center">
+            <p id="imageSender" class="font-medium"></p>
+            <p id="imageTime" class="text-sm text-gray-300"></p>
+            <p id="imageSize" class="text-sm text-gray-300"></p>
+        </div>
+    </div>
+
+    @php
+        $groupMembers = $conversation->users
+            ->whereNull('pivot.deleted_at')
+            ->map(fn($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'username' => $u->username ?? Str::slug($u->name),
+            ])
+            ->values();
+    @endphp
+
+<script>
         window.conversationId = {{ $conversation->id }};
         window.userId = {{ auth()->id() }};
         window.userName = "{{ auth()->user()->name }}";
@@ -578,15 +637,15 @@
 
     // Merapikan textarea input pesan
     document.addEventListener("DOMContentLoaded", () => {
-        const textarea = document.getElementById("chatInput");
         const maxHeight = 90; // maksimal 2–3 baris
 
-        // Set tinggi awal 1 baris
-        textarea.style.height = "40px";
+        document.querySelectorAll('.chatInput').forEach(textarea => {
+            textarea.style.height = '40px';
 
-        textarea.addEventListener("input", () => {
-            textarea.style.height = "40px"; // reset ke 1 baris
-            textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + "px";
+            textarea.addEventListener('input', () => {
+                textarea.style.height = '40px';
+                textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+            });
         });
     });
 
@@ -601,7 +660,7 @@
         const imagePreview = document.getElementById('imagePreview');
         const videoPreview = document.getElementById('videoPreview');
         const otherFilePreview = document.getElementById('otherFilePreview');
-        const textarea = document.getElementById('chatInput');
+        const textarea = document.querySelector('.chatInput');
 
         // Reset semua preview
         imagePreview.classList.add('hidden');
@@ -653,7 +712,7 @@
 
     // Hapus file preview
     function clearFile() {
-        const textarea = document.getElementById('chatInput');
+        const textarea = document.querySelector('.chatInput');
         
         // HAPUS TEXT OTOMATIS JIKA USER HAPUS FILE
         if (textarea.value.startsWith('Mengirim file:')) {
@@ -757,36 +816,90 @@
             cancelReply();
         }, 1000);
     });
-    </script>
-    <!-- MODAL UNTUK PREVIEW GAMBAR BESAR -->
-<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex-col items-center justify-center p-4">
-    <!-- Tombol tutup -->
-    <button onclick="closeImageModal()" 
-            class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 z-10">
-        ✕
-    </button>
-    
-    <!-- Tombol download di modal -->
-    <a id="modalDownloadBtn" 
-       class="absolute top-4 left-4 text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg flex items-center gap-2 z-10">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v-6m0 0l-3 3m3-3l3 3M3 21h18"/>
-        </svg>
-        Download
-    </a>
-    
-    <!-- Gambar -->
-    <div class="max-w-4xl max-h-[80vh] flex items-center justify-center">
-        <img id="modalImage" src="" 
-             class="max-w-full max-h-[80vh] object-contain rounded-lg"
-             onclick="closeImageModal()">
-    </div>
-    
-    <!-- Info gambar -->
-    <div class="mt-4 text-white text-center">
-        <p id="imageSender" class="font-medium"></p>
-        <p id="imageTime" class="text-sm text-gray-300"></p>
-        <p id="imageSize" class="text-sm text-gray-300"></p>
-    </div>
-</div>
+</script>
+
+<script>
+    window.groupMembers = @json($groupMembers);
+
+    document.querySelectorAll('.chatInput').forEach(textarea => {
+        const mentionBox = textarea
+            .closest('.relative')
+            .querySelector('#mentionBox');
+
+        textarea.addEventListener('input', () => {
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.slice(0, cursorPos);
+
+            // detect @keyword
+            const match = textBefore.match(/@([^\s@]*)$/);
+            if (!match) {
+                mentionBox.classList.add('hidden');
+                return;
+            }
+
+            const keyword = match[1].toLowerCase();
+
+            const results = window.groupMembers.filter(u =>
+                u.name.toLowerCase().includes(keyword) ||
+                u.username.toLowerCase().includes(keyword)
+            );
+
+            mentionBox.innerHTML = '';
+
+            if (!results.length) {
+                mentionBox.classList.add('hidden');
+                return;
+            }
+
+            results.slice(0, 5).forEach((user, index) => {
+
+                // divider (kecuali item pertama)
+                if (index > 0) {
+                    const divider = document.createElement('div');
+                    divider.className = 'h-px bg-gray-100 mx-2';
+                    mentionBox.appendChild(divider);
+                }
+
+                const item = document.createElement('div');
+                item.className =
+                    'px-3 py-2 cursor-pointer flex items-center rounded-md ' +
+                    'hover:bg-blue-50 transition';
+
+                item.innerHTML = `
+                    <div class="flex items-center justify-between gap-3 w-full">
+                        <span class="text-sm text-gray-800 truncate">
+                            ${user.name}
+                        </span>
+                        <span class="text-xs text-gray-400 shrink-0">
+                            @${user.username}
+                        </span>
+                    </div>
+                `;
+
+                item.onclick = () => {
+                    const start = textarea.value.lastIndexOf(match[0]);
+                    textarea.value =
+                        textarea.value.substring(0, start) +
+                        '@' + user.username + ' ' +
+                        textarea.value.substring(cursorPos);
+
+                    mentionBox.classList.add('hidden');
+                    textarea.focus();
+                };
+
+                mentionBox.appendChild(item);
+            });
+
+            mentionBox.classList.remove('hidden');
+        });
+
+        // klik di luar → tutup
+        document.addEventListener('click', e => {
+            if (!textarea.contains(e.target) && !mentionBox.contains(e.target)) {
+                mentionBox.classList.add('hidden');
+            }
+        });
+    });
+</script>
+
 </x-app-layout>

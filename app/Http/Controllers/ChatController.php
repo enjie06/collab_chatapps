@@ -248,25 +248,36 @@ class ChatController extends Controller
             }
         }
 
-        // Simpan pesan
+        $content = trim((string) $request->input('content'));
+
+        if ($content === '' && !$request->hasFile('attachment')) {
+            return back()->with('error', 'Pesan tidak boleh kosong.');
+        }
+
+        // JIKA ADA FILE TAPI TEXT KOSONG → ISI DUMMY
+        if ($content === '' && $request->hasFile('attachment')) {
+            $content = '[FILE]';
+        }
+
         $message = Message::create([
             'conversation_id' => $conversation->id,
             'user_id'         => $me,
-            'content'         => $request->content,
+            'content'         => $content, // ❗ TIDAK PERNAH NULL
             'reply_to_id'     => $request->reply_to_id,
         ]);
 
         // Simpan attachment
         if ($request->hasFile('attachment')) {
-            $file  = $request->file('attachment');
+            $file = $request->file('attachment');
             $mime  = $file->getClientMimeType();
             $type  = explode('/', $mime)[0];
             $path  = $file->store('attachments', 'public');
 
             \App\Models\Attachment::create([
-                'message_id' => $message->id,
-                'file_path'  => $path,
-                'file_type'  => $type == 'application' ? 'file' : $type,
+                'message_id'    => $message->id,
+                'file_path'     => $path,
+                'file_type'     => $type,
+                'original_name' => $file->getClientOriginalName(),
             ]);
         }
 
@@ -282,7 +293,6 @@ class ChatController extends Controller
 
         broadcast(new MessageSent($message))->toOthers();
 
-        // === PERBAIKAN PENTING: private chat muncul lagi di Percakapan Aktif KEDUA user ===
         if ($conversation->type === 'private') {
             $otherUserId = $otherUser?->id;
 
@@ -383,6 +393,6 @@ class ChatController extends Controller
         $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $userName);
         $fileName = $safeName . '_' . $originalName;
         
-        return response()->download($filePath, $fileName);
+        return response()->download($filePath, $attachment->original_name);
     }
 }
