@@ -75,7 +75,7 @@
             <div class="flex items-center justify-between mb-2">
                 <h3 class="font-semibold text-lg text-gray-700">Grup</h3>
 
-                {{-- Tombol kecil buat grup --}}
+                {{-- Tombol kecil rup --}}
                 <a href="{{ route('group.create') }}"
                     class="text-xs bg-rose-500 text-white px-2 py-1 rounded hover:bg-rose-600 transition">
                     + Grup
