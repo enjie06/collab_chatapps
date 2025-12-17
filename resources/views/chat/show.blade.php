@@ -574,19 +574,6 @@
 
         // Klik di luar → tutup
         document.addEventListener('click', () => menu.classList.add('hidden'));
-
-        // Aksi tombol:
-        document.getElementById('viewProfile').addEventListener('click', () => {
-            alert("Nanti diarahkan ke halaman profil si user.");
-        });
-
-        document.getElementById('deleteChat').addEventListener('click', () => {
-            alert("Nanti diarahkan ke konfirmasi hapus percakapan.");
-        });
-
-        document.getElementById('blockUser').addEventListener('click', () => {
-            alert("Nanti diarahkan ke fungsi blokir user.");
-        });
     });
 
     // Merapikan textarea input pesan
@@ -626,7 +613,7 @@
         fileSize.textContent = formatFileSize(file.size);
         preview.classList.remove('hidden');
 
-        // ✅ OTOMATIS ISI TEXTAREA DENGAN NAMA FILE
+        // OTOMATIS ISI TEXTAREA DENGAN NAMA FILE
         // Ini yang bikin required terpenuhi!
         if (!textarea.value.trim()) {
             textarea.value = `Mengirim file: ${file.name}`;
@@ -668,7 +655,7 @@
     function clearFile() {
         const textarea = document.getElementById('chatInput');
         
-        // ✅ HAPUS TEXT OTOMATIS JIKA USER HAPUS FILE
+        // HAPUS TEXT OTOMATIS JIKA USER HAPUS FILE
         if (textarea.value.startsWith('Mengirim file:')) {
             textarea.value = '';
         }
@@ -682,7 +669,7 @@
         const textarea = this.querySelector('textarea[name="content"]');
         const file = this.querySelector('input[name="attachment"]').files[0];
         
-        // ✅ JIKA ADA FILE TAPI TEXTAREA MASIH KOSONG, OTOMATIS ISI LAGI (double safety)
+        // JIKA ADA FILE TAPI TEXTAREA MASIH KOSONG, OTOMATIS ISI LAGI (double safety)
         if (file && !textarea.value.trim()) {
             textarea.value = `Mengirim file: ${file.name}`;
         }

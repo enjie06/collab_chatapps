@@ -122,9 +122,9 @@ class ChatController extends Controller
         $visibleMessagesQuery = $conversation->messages()
             ->when($pivot->last_cleared_at, function ($q) use ($pivot) {
                 $q->where('created_at', '>', $pivot->last_cleared_at);
-            })
-            ->when($pivot->deleted_at, function ($q) use ($pivot) {
-                $q->where('created_at', '>', $pivot->deleted_at);
+            // })
+            // ->when($pivot->deleted_at, function ($q) use ($pivot) {
+            //     $q->where('created_at', '>', $pivot->deleted_at);
             });
 
         $messages = $visibleMessagesQuery
@@ -348,48 +348,41 @@ class ChatController extends Controller
     public function deleteChat($id)
     {
         $conversation = Conversation::findOrFail($id);
-        $userId       = Auth::id();
+        $userId = Auth::id();
 
-        if ($conversation->type === 'private') {
-            // User ini tidak mau lihat pesan lama lagi (clear history + hide dari list)
-            $conversation->users()->updateExistingPivot($userId, [
-                'deleted_at'      => now(),
-                'last_cleared_at' => now(),
-            ]);
-        } else {
-            // GROUP: dianggap "keluar dari grup" di sisi user ini
-            $conversation->users()->updateExistingPivot($userId, [
-                'deleted_at' => now(),
-            ]);
-        }
+        // SEMUA TIPE: hanya hapus history user ini
+        $conversation->users()->updateExistingPivot($userId, [
+            'last_cleared_at' => now(),
+        ]);
 
-        return redirect()->route('chat.index')->with('success', 'Chat berhasil dihapus.');
+        return redirect()->route('chat.index')
+            ->with('success', 'Chat disembunyikan.');
     }
 
     public function downloadAttachment($attachmentId)
-{
-    $attachment = \App\Models\Attachment::findOrFail($attachmentId);
-    
-    // Cek apakah user berhak mengakses file ini
-    $message = $attachment->message;
-    $conversation = $message->conversation;
-    
-    if (!$conversation->users->contains(auth()->id())) {
-        abort(403, 'Unauthorized');
+    {
+        $attachment = \App\Models\Attachment::findOrFail($attachmentId);
+        
+        // Cek apakah user berhak mengakses file ini
+        $message = $attachment->message;
+        $conversation = $message->conversation;
+        
+        if (!$conversation->users->contains(auth()->id())) {
+            abort(403, 'Unauthorized');
+        }
+        
+        $filePath = storage_path('app/public/' . $attachment->file_path);
+        
+        if (!file_exists($filePath)) {
+            abort(404, 'File not found');
+        }
+        
+        // Buat nama file yang lebih friendly
+        $originalName = basename($attachment->file_path);
+        $userName = $message->user->name;
+        $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $userName);
+        $fileName = $safeName . '_' . $originalName;
+        
+        return response()->download($filePath, $fileName);
     }
-    
-    $filePath = storage_path('app/public/' . $attachment->file_path);
-    
-    if (!file_exists($filePath)) {
-        abort(404, 'File not found');
-    }
-    
-    // Buat nama file yang lebih friendly
-    $originalName = basename($attachment->file_path);
-    $userName = $message->user->name;
-    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $userName);
-    $fileName = $safeName . '_' . $originalName;
-    
-    return response()->download($filePath, $fileName);
-}
 }
