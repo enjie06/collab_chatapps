@@ -47,6 +47,7 @@
     </style>
     @php
         $isGroup = $conversation->type === 'group';
+        $isBroadcast = $conversation->type === 'broadcast';
 
         $otherUser = !$isGroup
             ? $conversation->users->firstWhere('id', '!=', auth()->id())
@@ -95,45 +96,40 @@
 
             <a href="{{ route('chat.index') }}" class="text-2xl text-rose-600 hover:text-rose-800 pr-2">←</a>
 
-            {{-- === JIKA GRUP === --}}
-            @if($isGroup)
-                <div class="flex items-center gap-3 flex-1">
-                    <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.png') }}"
-                        class="w-10 h-10 rounded-full object-cover border">
+            {{-- === JIKA GRUP / BROADCAST === --}}
+            @if($isGroup || $isBroadcast)
+            <div class="flex items-center gap-3 flex-1">
+                <img src="{{ $conversation->avatar
+                    ? asset('storage/'.$conversation->avatar)
+                    : asset('images/default-group.png') }}"
+                    class="w-10 h-10 rounded-full object-cover border">
 
-                    <div class="leading-tight">
-                        <p class="font-semibold text-gray-800">{{ $conversation->name }}</p>
+                <div class="leading-tight">
+                    <p class="font-semibold text-gray-800">
+                        {{ $conversation->name }}
+                    </p>
 
-                        @php
-                            // Anggota aktif saja
-                            $activeMembers = $conversation->users->filter(function($u) {
-                                return is_null($u->pivot->deleted_at);
-                            });
+                    @php
+                        $activeMembers = $conversation->users->filter(
+                            fn($u) => is_null($u->pivot->deleted_at)
+                        );
 
-                            // Tambah "(You)" untuk diri sendiri
-                            $names = $activeMembers->map(function($u) {
-                                return $u->id === auth()->id()
-                                    ? $u->name . ' (You)'
-                                    : $u->name;
-                            })->values();
+                        $names = $activeMembers->map(fn($u) =>
+                            $u->id === auth()->id()
+                                ? $u->name.' (You)'
+                                : $u->name
+                        );
 
-                            // Pindahkan "You" ke paling akhir
-                            $namesSorted = $names->sort(function ($a, $b) {
-                                // Yang mengandung "(You)" selalu di belakang
-                                $aIsYou = str_contains($a, '(You)');
-                                $bIsYou = str_contains($b, '(You)');
+                        $namesSorted = $names->sort(fn($a, $b) =>
+                            str_contains($a, '(You)') <=> str_contains($b, '(You)')
+                        );
+                    @endphp
 
-                                if ($aIsYou && !$bIsYou) return 1;
-                                if (!$aIsYou && $bIsYou) return -1;
-                                return 0;
-                            });
-                        @endphp
-
-                        <p class="text-xs text-gray-500">
-                            {{ $namesSorted->implode(', ') }}
-                        </p>
-                    </div>
+                    <p class="text-xs text-gray-500">
+                        {{ $namesSorted->implode(', ') }}
+                    </p>
                 </div>
+            </div>
 
             {{-- === JIKA PRIVATE === --}}
             @else
@@ -162,8 +158,7 @@
 
                         <button
                             onclick="window.location.href='{{ route('group.info', $conversation->id) }}'"
-                            class="block w-full text-left hover:text-rose-600 text-sm"
-                        >
+                            class="block w-full text-left hover:text-rose-600 text-sm">
                             Kelola Grup
                         </button>
 
@@ -183,6 +178,14 @@
                                 Tinggalkan Grup
                             </button>
                         </form>
+                        
+                    @elseif($isBroadcast)
+                        <button
+                            onclick="window.location.href='{{ route('broadcast.info', $conversation->id) }}'"
+                            class="block w-full text-left hover:text-rose-600 text-sm">
+                            Kelola Broadcast
+                        </button>
+                    
                     @else
                         <p class="font-semibold text-center">{{ $otherUser->name }}</p>
                         <p class="text-xs text-gray-500 text-center mb-2">{{ $otherUser->email }}</p>
@@ -528,16 +531,32 @@
                     </button>
                 </form>
             @else
-                {{-- Tidak bisa kirim --}}
-                <div class="text-center text-gray-500 text-sm italic py-3 sticky bottom-0 bg-white border-t">
-                    @if($isBlocked)
-                        Kalian tidak dapat saling mengirim pesan.
-                    @elseif($friendship && $friendship->status !== 'accepted')
-                        Kalian sudah tidak berteman. Chat hanya dapat dibaca.
+                {{-- ==== BROADCAST ==== --}}
+                @if($isBroadcast)
+
+                    @php
+                        $pivot = $conversation->users
+                            ->firstWhere('id', auth()->id())?->pivot;
+
+                        $isRemoved = !is_null($pivot?->deleted_at);
+                        $isAdmin   = $pivot?->role === 'admin';
+                    @endphp
+
+                    @if($isAdmin)
+                        {{-- Admin boleh kirim --}}
+                        {{-- (form kirim pesan tetap di sini) --}}
+
                     @else
-                        Chat tidak bisa digunakan.
+                        {{-- Tidak bisa kirim --}}
+                        <div class="text-center text-gray-500 text-sm italic py-3 sticky bottom-0 bg-white border-t">
+                            @if($isRemoved)
+                                Kamu bukan lagi member broadcast.
+                            @else
+                                Broadcast bersifat satu arah. Kamu hanya bisa membaca pesan.
+                            @endif
+                        </div>
                     @endif
-                </div>
+                @endif
             @endif
         @endif
     </div>

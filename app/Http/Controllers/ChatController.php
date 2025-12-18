@@ -105,120 +105,74 @@ class ChatController extends Controller
     // Detail percakapan (chatroom)
     public function show($id)
     {
-        $me   = Auth::id();
+        $me = Auth::id();
 
-        // Ambil percakapan yang user ikuti
         $conversation = Conversation::with(['users'])
             ->whereHas('users', fn($q) => $q->where('user_id', $me))
             ->findOrFail($id);
 
-        // Khusus broadcast
-        $conversation = Conversation::findOrFail($id);
-
-        if ($conversation->type === 'broadcast') {
-            return redirect()->route('broadcast.info', $conversation->id);
-        }
-
-        // Tipe percakapan
         $type        = $conversation->type;
         $isPrivate   = $type === 'private';
         $isGroup     = $type === 'group';
         $isBroadcast = $type === 'broadcast';
 
-        // Ambil pivot untuk user saat ini
         $pivot = $conversation->users
             ->firstWhere('id', $me)
             ->pivot;
 
-        $deletedAt = $pivot->deleted_at;
-        $lastRead  = $pivot->last_read_message_id ?? 0;
+        $lastRead = $pivot->last_read_message_id ?? 0;
 
-        // Pesan yang TERLIHAT oleh user ini
-        $visibleMessagesQuery = $conversation->messages()
-            ->when($pivot->last_cleared_at, function ($q) use ($pivot) {
-                $q->where('created_at', '>', $pivot->last_cleared_at);
-            })
-            ->when($pivot->deleted_at, function ($q) use ($pivot) {
-                $q->where('created_at', '<=', $pivot->deleted_at);
-            });
-
-        $messages = $visibleMessagesQuery
-            ->with([
-                'user',          // pengirim
-                'replyTo.user',  // pesan yang dibalas + user-nya
-                'attachment'     // file lampiran
-            ])
+        $messages = $conversation->messages()
+            ->when($pivot->last_cleared_at, fn($q) =>
+                $q->where('created_at', '>', $pivot->last_cleared_at)
+            )
+            ->when($pivot->deleted_at, fn($q) =>
+                $q->where('created_at', '<=', $pivot->deleted_at)
+            )
+            ->with(['user', 'replyTo.user', 'attachment'])
             ->orderBy('id')
             ->get();
 
-        // Pesan terakhir yang benar-benar terlihat user ini
         $lastVisible = $messages->last();
-        $conversation->last_visible_message = $lastVisible;
-        $conversation->last_visible_time    = $lastVisible ? $lastVisible->created_at : null;
-
-        // Update last_read_message_id (pakai pesan terakhir overall di conversation)
-        $lastMessageOverall = $messages->last();
 
         $conversation->users()->updateExistingPivot($me, [
-            'last_read_message_id' => $lastMessageOverall?->id ?? 0,
+            'last_read_message_id' => $lastVisible?->id ?? 0,
         ]);
 
-        // Default
         $canSend   = true;
         $otherUser = null;
         $members   = collect();
 
-        // Private Chat
         if ($isPrivate) {
-            $otherUser = $conversation->users
-                ->firstWhere('id', '!=', $me);
-
-            if (!$otherUser) {
-                abort(404, "Percakapan private tidak valid.");
-            }
-
+            $otherUser = $conversation->users->firstWhere('id', '!=', $me);
             $friendship = Friendship::between($me, $otherUser->id)->first();
 
-            $isFriend  = $friendship && $friendship->status === 'accepted';
-            $isBlocked = $friendship && $friendship->is_blocked;
-
-            $canSend = $isFriend && !$isBlocked;
+            $canSend = $friendship
+                && $friendship->status === 'accepted'
+                && !$friendship->is_blocked;
         }
 
-        // Group Chat
         if ($isGroup) {
             $members = $conversation->users;
-            $canSend = true;
         }
 
-        // Broadcast Chat
         if ($isBroadcast) {
-            $role = $conversation->users
-                ->firstWhere('id', $me)
-                ->pivot
-                ->role;
-
+            $role = $pivot->role;
             $canSend = ($role === 'admin');
             $members = $conversation->users;
         }
 
-        $conversation = Conversation::with(['users'])
-            ->whereHas('users', fn($q) => $q->where('user_id', $me))
-            ->findOrFail($id);
-
-        $conversation->forgetMessagesRelation();
-
-        return view('chat.show', [
-            'conversation' => $conversation,
-            'messages'     => $messages,
-            'lastRead'     => $lastRead,
-            'isGroup'      => $isGroup,
-            'isPrivate'    => $isPrivate,
-            'isBroadcast'  => $isBroadcast,
-            'otherUser'    => $otherUser,
-            'members'      => $members,
-            'canSend'      => $canSend,
-        ]);
+        return view('chat.show', compact(
+            'conversation',
+            'messages',
+            'lastRead',
+            'isGroup',
+            'isPrivate',
+            'isBroadcast',
+            'otherUser',
+            'members',
+            'canSend'
+        ));
     }
 
     // Kirim pesan baru

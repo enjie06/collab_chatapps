@@ -96,7 +96,7 @@
                     class="block p-3 mb-2 bg-white border rounded-lg hover:bg-rose-50 transition">
 
                     <div class="flex items-center gap-3">
-                        <img src="{{ $broadcast->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.png') }}"
+                        <img src="{{ $broadcast->avatar ? asset('storage/'.$broadcast->avatar) : asset('images/default-group.png') }}"
                             class="w-9 h-9 rounded-full object-cover border">
 
                         <div class="flex-1">
@@ -190,12 +190,15 @@
             @forelse($conversations as $conversation)
                 @php
                     $isGroup = $conversation->type === 'group';
+                    $isBroadcast = $conversation->type === 'broadcast';
+                    $isPrivate   = $conversation->type === 'private';
+
                     $lastMsg = $conversation->last_visible_message;
                     $myRead = $conversation->users->firstWhere('id', auth()->id())?->pivot?->last_read_message_id ?? 0;
                     $hasUnread = $lastMsg && $lastMsg->user_id != auth()->id() && $myRead < $lastMsg->id;
 
                     // Untuk private
-                    $partner = !$isGroup
+                    $partner = !$isPrivate
                         ? $conversation->users->firstWhere('id', '!=', auth()->id())
                         : null;
                 @endphp
@@ -206,22 +209,21 @@
                     <div class="flex items-center gap-3">
 
                         {{-- FOTO --}}
-                        @if($isGroup)
-                            <div class="relative">
-                                <img src="{{ $conversation->avatar ? asset('storage/'.$conversation->avatar) : asset('images/default-group.png') }}"
-                                    class="w-10 h-10 rounded-full object-cover border">
-                            </div>
-                        @else
-                            <div class="relative">
-                                <img src="{{ $partner?->avatar ? asset('storage/'.$partner->avatar) : asset('images/default-avatar.png') }}"
-                                    class="w-10 h-10 rounded-full object-cover border">
-                            </div>
-                        @endif
+                        <img src="{{ 
+                            ($isGroup || $isBroadcast)
+                                ? ($conversation->avatar
+                                    ? asset('storage/'.$conversation->avatar)
+                                    : asset('images/default-group.png'))
+                                : ($partner?->avatar
+                                    ? asset('storage/'.$partner->avatar)
+                                    : asset('images/default-avatar.png'))
+                        }}"
+                        class="w-10 h-10 rounded-full object-cover border">
 
                         {{-- NAMA --}}
                         <div class="flex-1">
                             <strong class="text-rose-600">
-                                @if($conversation->type === 'group' || $conversation->type === 'broadcast')
+                                @if($isGroup || $isBroadcast)
                                     {{ $conversation->name }}
                                 @else
                                     {{ $partner?->name ?? 'User tidak ditemukan' }}
