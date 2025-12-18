@@ -25,19 +25,21 @@ class GroupController extends Controller
             'member_ids' => 'required|array',
         ]);
 
-        // 1️⃣ Buat percakapan grup
+        // Buat percakapan grup
         $conversation = Conversation::create([
             'name' => $request->title,
             'type' => 'group',
             'avatar' => null,   // nanti bisa update foto grup
         ]);
 
-        // 2️⃣ Tambahkan pembuat grup
+        // Tambahkan pembuat grup
         $conversation->users()->attach(Auth::id(), ['role' => 'admin']);
 
-        // 3️⃣ Tambahkan anggota lain
+        // Tambahkan anggota lain
         foreach ($request->member_ids as $memberId) {
-            $conversation->users()->attach($memberId, ['role' => 'member']);
+            if ($memberId != Auth::id()) {
+                $conversation->users()->attach($memberId, ['role' => 'member']);
+            }
         }
 
         return redirect()->route('chat.index')->with('success', 'Grup berhasil dibuat!');
@@ -53,16 +55,26 @@ class GroupController extends Controller
         $me = Auth::id();
 
         // role user
-        $pivot = $group->users()->where('user_id', $me)->first()->pivot;
+        $pivot = $group->users()
+            ->where('user_id', $me)
+            ->first()
+            ->pivot;
+
         $isAdmin = $pivot->role === 'admin';
 
         // Hanya anggota aktif (belum keluar)
-        $members = $group->users()->whereNull('conversation_user.deleted_at')->get();
+        $members = $group->users()
+            ->whereNull('conversation_user.deleted_at')
+            ->get();
+
+        // Teman (untuk tambah anggota)
+        $friends = auth()->user()->friends();
 
         return view('chat.group-info', [
             'group'   => $group,
             'members' => $members,
             'isAdmin' => $isAdmin,
+            'friends' => $friends,
         ]);
     }
 
@@ -99,29 +111,69 @@ class GroupController extends Controller
     // Tambah anggota
     public function addMember(Request $request, $id)
     {
-        $request->validate(['user_id' => 'required|exists:users,id']);
+        $request->validate([
+            'user_id'   => 'required|array',
+            'user_id.*' => 'exists:users,id',
+        ]);
 
-        $group = Conversation::findOrFail($id);
-
-        $this->authorizeAdmin($group);
-
-        if (!$group->users->contains($request->user_id)) {
-            $group->users()->attach($request->user_id, ['role' => 'member']);
+        if (empty($request->user_id)) {
+            return back()->with('error', 'Pilih minimal satu teman.');
         }
 
-        return back()->with('success', 'Anggota baru berhasil ditambahkan.');
+        $group = Conversation::findOrFail($id);
+        $this->authorizeAdmin($group);
+
+        foreach ($request->user_id as $userId) {
+            $pivot = $group->users()
+                ->where('user_id', $userId)
+                ->first();
+
+            if ($pivot) {
+                // revive user lama
+                $group->users()->updateExistingPivot($userId, [
+                    'deleted_at' => null,
+                    'role'       => 'member',
+                ]);
+            } else {
+                // user baru
+                $group->users()->attach($userId, [
+                    'role' => 'member',
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Anggota berhasil ditambahkan.');
     }
 
     // Hapus anggota
     public function removeMember($id, $memberId)
     {
         $group = Conversation::findOrFail($id);
-
         $this->authorizeAdmin($group);
 
-        $group->users()->detach($memberId);
+        $admins = $group->users()
+            ->wherePivot('role', 'admin')
+            ->whereNull('conversation_user.deleted_at')
+            ->count();
 
-        return back()->with('success', 'Anggota berhasil dihapus.');
+        $target = $group->users()
+            ->where('user_id', $memberId)
+            ->whereNull('conversation_user.deleted_at')
+            ->first();
+
+        if (!$target) {
+            return back()->with('error', 'User tidak ditemukan atau sudah keluar.');
+        }
+
+        if ($target->pivot->role === 'admin' && $admins <= 1) {
+            return back()->with('error', 'Admin terakhir tidak boleh dikeluarkan.');
+        }
+
+        $group->users()->updateExistingPivot($memberId, [
+            'deleted_at' => now()
+        ]);
+
+        return back()->with('success', 'Anggota dikeluarkan dari grup.');
     }
 
     // Promote admin
@@ -130,9 +182,20 @@ class GroupController extends Controller
         $group = Conversation::findOrFail($id);
         $this->authorizeAdmin($group);
 
-        $group->users()->updateExistingPivot($memberId, ['role' => 'admin']);
+        $member = $group->users()
+            ->where('user_id', $memberId)
+            ->whereNull('conversation_user.deleted_at')
+            ->first();
 
-        return back()->with('success', 'Pengguna dipromosikan menjadi admin.');
+        if (!$member) {
+            return back()->with('error', 'User sudah keluar dari grup.');
+        }
+
+        $group->users()->updateExistingPivot($memberId, [
+            'role' => 'admin'
+        ]);
+
+        return back()->with('success', 'Anggota dijadikan admin.');
     }
 
     // Demote admin
@@ -141,7 +204,27 @@ class GroupController extends Controller
         $group = Conversation::findOrFail($id);
         $this->authorizeAdmin($group);
 
-        $group->users()->updateExistingPivot($memberId, ['role' => 'member']);
+        $target = $group->users()
+            ->where('user_id', $memberId)
+            ->whereNull('conversation_user.deleted_at')
+            ->first();
+
+        if (!$target) {
+            return back()->with('error', 'User sudah keluar dari grup.');
+        }
+
+        $admins = $group->users()
+            ->wherePivot('role', 'admin')
+            ->whereNull('conversation_user.deleted_at')
+            ->count();
+
+        if ($admins <= 1) {
+            return back()->with('error', 'Admin terakhir tidak boleh diturunkan.');
+        }
+
+        $group->users()->updateExistingPivot($memberId, [
+            'role' => 'member'
+        ]);
 
         return back()->with('success', 'Admin diturunkan menjadi member.');
     }
@@ -153,7 +236,11 @@ class GroupController extends Controller
         $me = Auth::id();
 
         // Admin tidak boleh leave kalau hanya 1 admin tersisa
-        $admins = $group->users()->wherePivot('role', 'admin')->count();
+        $admins = $group->users()
+            ->wherePivot('role', 'admin')
+            ->whereNull('conversation_user.deleted_at')
+            ->count();
+
         $myPivot = $group->users()->where('user_id', $me)->first()->pivot;
         $myRole  = $myPivot->role;
 

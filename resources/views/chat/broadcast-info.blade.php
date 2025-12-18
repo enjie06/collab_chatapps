@@ -2,18 +2,18 @@
     <div class="max-w-md mx-auto mt-4 p-4 bg-white border rounded-lg shadow-sm">
 
         <!-- TOMBOL KEMBALI -->
-        <button onclick="window.location='{{ route('chat.show', $group->id) }}'"
+        <button onclick="window.location='{{ route('chat.show', $broadcast->id) }}'"
             class="bg-rose-500 border border-rose-600 text-white text-xs font-semibold 
                 px-3 py-1.5 rounded-lg hover:bg-rose-600 transition mb-3">
             ← Kembali
         </button>
 
-        <!-- FOTO & INFO GRUP -->
+        <!-- FOTO & INFO BROADCAST -->
         <div class="flex flex-col items-center mb-4">
-            <img src="{{ $group->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.png') }}"
+            <img src="{{ $broadcast->avatar ? asset('storage/'.$broadcast->avatar) : asset('images/default-group.png') }}"
                  class="w-20 h-20 rounded-full border object-cover mb-3">
 
-            <h2 class="text-lg font-semibold text-gray-800">{{ $group->name }}</h2>
+            <h2 class="text-lg font-semibold text-gray-800">{{ $broadcast->name }}</h2>
             <p class="text-xs text-gray-500">{{ $members->count() }} anggota</p>
         </div>
 
@@ -46,19 +46,21 @@
 
                 <form id="addMemberBox"
                     method="POST"
-                    action="{{ route('group.add', $group->id) }}"
+                    action="{{ route('broadcast.add', $broadcast->id) }}"
                     class="hidden">
                     @csrf
 
                     <div class="max-h-40 overflow-y-auto rounded-lg border bg-gray-50 p-3 mb-3 space-y-1">
 
                         @php
-                            $availableFriends = $friends->filter(fn($f) => !$members->contains($f->id));
+                            $availableFriends = isset($friends)
+                                ? $friends->filter(fn($f) => !$members->contains($f->id))
+                                : collect();
                         @endphp
 
                         @if($availableFriends->isEmpty())
                             <p class="text-xs text-gray-500">
-                                Semua teman sudah menjadi anggota grup.
+                                Semua teman sudah menjadi anggota broadcast.
                             </p>
                         @else
                             @foreach($availableFriends as $friend)
@@ -119,41 +121,20 @@
                         </span>
                     @else
                         <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded-full font-medium">
-                            Anggota
+                            Member
                         </span>
                     @endif
 
                     {{-- AKSI --}}
-                    @if($isAdmin && $m->id !== auth()->id())
-                        <div class="flex items-center gap-3 text-[11px]">
-
-                            @if($m->pivot->role === 'member')
-                                <form method="POST"
-                                    action="{{ route('group.promote', [$group->id, $m->id]) }}">
-                                    @csrf
-                                    <button class="text-rose-600 hover:underline">
-                                        Jadikan Admin
-                                    </button>
-                                </form>
-                            @else
-                                <form method="POST"
-                                    action="{{ route('group.demote', [$group->id, $m->id]) }}">
-                                    @csrf
-                                    <button class="text-gray-500 hover:underline">
-                                        Turunkan
-                                    </button>
-                                </form>
-                            @endif
-
-                            <form method="POST"
-                                action="{{ route('group.remove', [$group->id, $m->id]) }}">
-                                @csrf
-                                @method('DELETE')
-                                <button class="text-red-500 hover:underline">
-                                    Keluarkan
-                                </button>
-                            </form>
-                        </div>
+                    @if($isAdmin && $m->pivot->role !== 'admin')
+                        <form method="POST"
+                            action="{{ route('broadcast.remove', [$broadcast->id, $m->id]) }}">
+                            @csrf
+                            @method('DELETE')
+                            <button class="text-red-500 text-[11px] hover:underline">
+                                Keluarkan
+                            </button>
+                        </form>
                     @endif
                 </div>
             </div>

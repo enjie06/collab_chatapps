@@ -71,6 +71,45 @@
                 </button>
             </form>
 
+            {{-- === Broadcast === --}}
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-semibold text-lg text-gray-700">Broadcast</h3>
+
+                {{-- Tombol kecil buat broadcast --}}
+                <a href="{{ route('broadcast.create') }}"
+                    class="text-xs bg-rose-500 text-white px-2 py-1 rounded hover:bg-rose-600 transition">
+                    + Broadcast
+                </a>
+            </div>
+
+            {{-- List Broadcast --}}
+            @foreach(
+                $conversations
+                    ->where('type', 'broadcast')
+                    ->filter(function($g) {
+                        $myPivot = $g->users->firstWhere('id', auth()->id())?->pivot;
+                        return is_null($myPivot?->deleted_at);
+                    })
+                as $broadcast
+            )
+                <a href="{{ route('chat.show', $broadcast->id) }}"
+                    class="block p-3 mb-2 bg-white border rounded-lg hover:bg-rose-50 transition">
+
+                    <div class="flex items-center gap-3">
+                        <img src="{{ $broadcast->avatar ? asset('storage/'.$group->avatar) : asset('images/default-group.png') }}"
+                            class="w-9 h-9 rounded-full object-cover border">
+
+                        <div class="flex-1">
+                            <strong class="text-gray-800">{{ $broadcast->name }}</strong>
+
+                            <div class="text-xs text-gray-500">
+                                {{ $broadcast->messages->count() ? Str::limit($broadcast->messages->last()->content, 40) : 'Belum ada pesan.' }}
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            @endforeach
+
             {{-- === GRUP === --}}
             <div class="flex items-center justify-between mb-2">
                 <h3 class="font-semibold text-lg text-gray-700">Grup</h3>
@@ -182,7 +221,11 @@
                         {{-- NAMA --}}
                         <div class="flex-1">
                             <strong class="text-rose-600">
-                                {{ $isGroup ? $conversation->name : $partner->name }}
+                                @if($conversation->type === 'group' || $conversation->type === 'broadcast')
+                                    {{ $conversation->name }}
+                                @else
+                                    {{ $partner?->name ?? 'User tidak ditemukan' }}
+                                @endif
                             </strong>
 
                             <div class="text-xs text-gray-500">

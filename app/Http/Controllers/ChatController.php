@@ -112,6 +112,13 @@ class ChatController extends Controller
             ->whereHas('users', fn($q) => $q->where('user_id', $me))
             ->findOrFail($id);
 
+        // Khusus broadcast
+        $conversation = Conversation::findOrFail($id);
+
+        if ($conversation->type === 'broadcast') {
+            return redirect()->route('broadcast.info', $conversation->id);
+        }
+
         // Tipe percakapan
         $type        = $conversation->type;
         $isPrivate   = $type === 'private';

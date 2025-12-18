@@ -3,131 +3,139 @@
 namespace App\Http\Controllers;
 
 use App\Models\Conversation;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class BroadcastController extends Controller
 {
-    // Buat channel
+    // CREATE
     public function create()
     {
-        $friends = auth()->user()->friends(); 
+        $friends = auth()->user()->friends();
         return view('chat.create-broadcast', compact('friends'));
     }
 
-    // Lihat channel
     public function store(Request $request)
     {
         $request->validate([
-            'title'      => 'required|string|max:255',
-            'member_ids' => 'required|array',
+            'title'        => 'required|string|max:255',
+            'member_ids'   => 'required|array',
+            'member_ids.*' => 'exists:users,id',
         ]);
 
-        // Buat channel broadcast
         $broadcast = Conversation::create([
-            'name'   => $request->title,
-            'type'   => 'broadcast',
-            'avatar' => null,
+            'name' => $request->title,
+            'type' => 'broadcast',
         ]);
 
-        // Pembuat = admin
+        // creator = admin
         $broadcast->users()->attach(Auth::id(), ['role' => 'admin']);
 
-        // Subscriber lain
-        foreach ($request->member_ids as $memberId) {
-            $broadcast->users()->attach($memberId, ['role' => 'subscriber']);
+        // members
+        foreach ($request->member_ids as $userId) {
+            if ($userId != Auth::id()) {
+                $broadcast->users()->attach($userId, [
+                    'role' => 'member',
+                ]);
+            }
         }
 
-        return redirect()->route('chat.index')
-            ->with('success', 'Channel broadcast berhasil dibuat!');
+        return redirect()
+            ->route('chat.index')
+            ->with('success', 'Broadcast berhasil dibuat.');
     }
 
-    // Informasi channel
+    // INFO
     public function info($id)
     {
-        $broadcast = Conversation::with('users')
-            ->where('type', 'broadcast')
-            ->findOrFail($id);
-
+        $broadcast = Conversation::where('type', 'broadcast')->findOrFail($id);
         $me = Auth::id();
 
-        $pivot = $broadcast->users()->where('user_id', $me)->first()->pivot;
+        $pivot = $broadcast->users()
+            ->where('user_id', $me)
+            ->first()
+            ->pivot;
+
         $isAdmin = $pivot->role === 'admin';
+
+        $members = $broadcast->users()
+            ->whereNull('conversation_user.deleted_at')
+            ->get();
+
+        $friends = auth()->user()->friends();
 
         return view('chat.broadcast-info', [
             'broadcast' => $broadcast,
-            'members'   => $broadcast->users,
+            'members'   => $members,
             'isAdmin'   => $isAdmin,
+            'friends'   => $friends,
         ]);
     }
 
-    // Nama grup
-    public function updateName(Request $request, $id)
-    {
-        $request->validate(['name' => 'required|string|max:255']);
-
-        $bc = Conversation::findOrFail($id);
-        $this->authorizeAdmin($bc);
-
-        $bc->update(['name' => $request->name]);
-
-        return back()->with('success', 'Nama channel berhasil diubah.');
-    }
-
-    // Foto grup
-    public function updatePhoto(Request $request, $id)
-    {
-        $request->validate(['avatar' => 'required|image|max:2048']);
-
-        $bc = Conversation::findOrFail($id);
-        $this->authorizeAdmin($bc);
-
-        $path = $request->file('avatar')->store('broadcast_avatars', 'public');
-        $bc->update(['avatar' => $path]);
-
-        return back()->with('success', 'Foto channel berhasil diperbarui.');
-    }
-
-    // Tambah anggota
+    // ADD MEMBER
     public function addMember(Request $request, $id)
     {
-        $request->validate(['user_id' => 'required|exists:users,id']);
+        $request->validate([
+            'user_id'   => 'required|array',
+            'user_id.*' => 'exists:users,id',
+        ]);
 
-        $bc = Conversation::findOrFail($id);
-        $this->authorizeAdmin($bc);
+        $broadcast = Conversation::findOrFail($id);
+        $this->authorizeAdmin($broadcast);
 
-        if (!$bc->users->contains($request->user_id)) {
-            $bc->users()->attach($request->user_id, ['role' => 'subscriber']);
+        foreach ($request->user_id as $userId) {
+            $broadcast->users()->syncWithoutDetaching([
+                $userId => [
+                    'role'       => 'member',
+                    'deleted_at' => null,
+                ],
+            ]);
         }
 
-        return back()->with('success', 'Subscriber baru berhasil ditambahkan.');
+        return back()->with('success', 'Member ditambahkan.');
     }
 
-    // Hapus anggota
+    // REMOVE MEMBER
     public function removeMember($id, $memberId)
     {
-        $bc = Conversation::findOrFail($id);
-        $this->authorizeAdmin($bc);
+        $broadcast = Conversation::findOrFail($id);
+        $this->authorizeAdmin($broadcast);
 
-        $bc->users()->detach($memberId);
+        $target = $broadcast->users()
+            ->where('user_id', $memberId)
+            ->whereNull('conversation_user.deleted_at')
+            ->first();
 
-        return back()->with('success', 'Subscriber berhasil dikeluarkan.');
+        if (!$target) {
+            return back()->with('error', 'Member tidak ditemukan.');
+        }
+
+        if ($target->pivot->role === 'admin') {
+            return back()->with('error', 'Admin tidak bisa dikeluarkan.');
+        }
+
+        $broadcast->users()->updateExistingPivot($memberId, [
+            'deleted_at' => now(),
+        ]);
+
+        return back()->with('success', 'Member dikeluarkan.');
     }
 
-    // Delete channel
+    // DELETE
     public function delete($id)
     {
-        $bc = Conversation::findOrFail($id);
-        $this->authorizeAdmin($bc);
+        $broadcast = Conversation::findOrFail($id);
+        $this->authorizeAdmin($broadcast);
 
-        $bc->delete();
+        $broadcast->delete();
 
-        return redirect()->route('chat.index')->with('success', 'Channel broadcast dihapus.');
+        return redirect()
+            ->route('chat.index')
+            ->with('success', 'Broadcast dihapus.');
     }
 
-    // Admin
-    private function authorizeAdmin($broadcast)
+    // AUTH
+    private function authorizeAdmin(Conversation $broadcast)
     {
         $role = $broadcast->users()
             ->where('user_id', Auth::id())
@@ -135,6 +143,6 @@ class BroadcastController extends Controller
             ->pivot
             ->role;
 
-        abort_if($role !== 'admin', 403, "Hanya admin yang boleh melakukan aksi ini.");
+        abort_if($role !== 'admin', 403);
     }
 }

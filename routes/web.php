@@ -59,7 +59,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/groups/create', [GroupController::class, 'createGroup'])->name('group.create');
     Route::post('/groups/store', [GroupController::class, 'store'])->name('group.store');
 
-    // Menu grip
+    // Menu grup
     Route::get('/group/{id}/info', [GroupController::class, 'info'])->name('group.info');
     Route::post('/group/{id}/name', [GroupController::class, 'updateName'])->name('group.name');
     Route::post('/group/{id}/photo', [GroupController::class, 'updatePhoto'])->name('group.photo');
@@ -69,6 +69,16 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/group/{id}/demote/{memberId}', [GroupController::class, 'demote'])->name('group.demote');
     Route::delete('/group/{id}/leave', [GroupController::class, 'leave'])->name('group.leave');
     Route::delete('/group/{id}/delete', [GroupController::class, 'delete'])->name('group.delete');
+
+    // Broadcast
+    Route::get('/broadcast/create', [BroadcastController::class, 'create'])->name('broadcast.create');
+    Route::post('/broadcast/store', [BroadcastController::class, 'store'])->name('broadcast.store');
+    Route::get('/broadcast/{id}/info', [BroadcastController::class, 'info'])->name('broadcast.info');
+    Route::post('/broadcast/{id}/name', [BroadcastController::class, 'updateName'])->name('broadcast.name');
+    Route::post('/broadcast/{id}/photo', [BroadcastController::class, 'updatePhoto'])->name('broadcast.photo');
+    Route::post('/broadcast/{id}/add', [BroadcastController::class, 'addMember'])->name('broadcast.add');
+    Route::delete('/broadcast/{id}/remove/{memberId}', [BroadcastController::class, 'removeMember'])->name('broadcast.remove');
+    Route::delete('/broadcast/{id}/delete', [BroadcastController::class, 'delete'])->name('broadcast.delete');
 });
 
 Route::get('/chat/download/{attachment}', [ChatController::class, 'downloadAttachment'])
