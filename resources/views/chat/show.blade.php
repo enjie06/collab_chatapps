@@ -315,16 +315,29 @@
 
                                 {{-- IMAGE --}}
                                 @if(str_contains($att->file_type, 'image'))
-                                    <div class="mb-2">
+                                    <div class="mb-2 space-y-1">
+
+                                        {{-- FOTO --}}
                                         <a href="#"
-                                        onclick="showImageModal(
+                                            onclick="showImageModal(
                                                 '{{ asset('storage/'.$att->file_path) }}',
                                                 '{{ $message->user->name }}',
                                                 '{{ $message->created_at->format('d M Y H:i') }}'
-                                        )"
-                                        class="block chat-image">
+                                            )"
+                                            class="block chat-image">
                                             <img src="{{ asset('storage/'.$att->file_path) }}"
                                                 class="rounded-lg max-w-[200px] max-h-[200px] object-cover border img-thumbnail">
+                                        </a>
+
+                                        {{-- DOWNLOAD BUTTON --}}
+                                        <a href="{{ asset('storage/'.$att->file_path) }}"
+                                        download
+                                        class="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 4v12m0 0l4-4m-4 4l-4-4M4 20h16"/>
+                                            </svg>
+                                            Download
                                         </a>
                                     </div>
 
