@@ -47,10 +47,18 @@ class ChatController extends Controller
             $deletedAt = $pivot->deleted_at;
 
             // filter pesan yang sudah dihapus
-            $visibleMessages = $c->messages->filter(function($m) use ($pivot) {
+            $visibleMessages = $c->messages->filter(function($m) use ($pivot, $c) {
+
+                // hide pesan sebelum clear
                 if ($pivot->last_cleared_at && $m->created_at <= $pivot->last_cleared_at) {
                     return false;
                 }
+
+                // kalau grup & user sudah keluar → batasi sampai deleted_at
+                if ($c->type === 'group' && $pivot->deleted_at && $m->created_at > $pivot->deleted_at) {
+                    return false;
+                }
+
                 return true;
             });
 
@@ -122,9 +130,9 @@ class ChatController extends Controller
         $visibleMessagesQuery = $conversation->messages()
             ->when($pivot->last_cleared_at, function ($q) use ($pivot) {
                 $q->where('created_at', '>', $pivot->last_cleared_at);
-            // })
-            // ->when($pivot->deleted_at, function ($q) use ($pivot) {
-            //     $q->where('created_at', '>', $pivot->deleted_at);
+            })
+            ->when($pivot->deleted_at, function ($q) use ($pivot) {
+                $q->where('created_at', '<=', $pivot->deleted_at);
             });
 
         $messages = $visibleMessagesQuery
@@ -142,9 +150,7 @@ class ChatController extends Controller
         $conversation->last_visible_time    = $lastVisible ? $lastVisible->created_at : null;
 
         // Update last_read_message_id (pakai pesan terakhir overall di conversation)
-        $lastMessageOverall = $conversation->messages()
-            ->orderBy('id', 'desc')
-            ->first();
+        $lastMessageOverall = $messages->last();
 
         $conversation->users()->updateExistingPivot($me, [
             'last_read_message_id' => $lastMessageOverall?->id ?? 0,
@@ -262,7 +268,7 @@ class ChatController extends Controller
         $message = Message::create([
             'conversation_id' => $conversation->id,
             'user_id'         => $me,
-            'content'         => $content, // ❗ TIDAK PERNAH NULL
+            'content'         => $content, // TIDAK PERNAH NULL
             'reply_to_id'     => $request->reply_to_id,
         ]);
 
