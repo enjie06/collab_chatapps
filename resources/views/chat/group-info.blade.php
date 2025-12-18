@@ -19,68 +19,64 @@
 
         <hr class="my-4">
 
-        @if($isAdmin)
-            <div class="mb-6">
+        <div class="mb-6">
 
-                {{-- SUCCESS --}}
-                @if(session('success'))
-                    <div id="flash-success"
-                        class="mb-3 text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                        {{ session('success') }}
-                    </div>
-                @endif
+            {{-- SUCCESS --}}
+            @if(session('success'))
+                <div id="flash-success"
+                    class="mb-3 text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    {{ session('success') }}
+                </div>
+            @endif
 
-                {{-- ERROR --}}
-                @if(session('error'))
-                    <div id="flash-error"
-                        class="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                        {{ session('error') }}
-                    </div>
-                @endif
+            {{-- ERROR --}}
+            @if(session('error'))
+                <div id="flash-error"
+                    class="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            <button
+                onclick="document.getElementById('addMemberBox').classList.toggle('hidden')"
+                class="w-full text-sm font-medium py-2 mb-3 border rounded-lg hover:bg-gray-50">
+                + Tambah Anggota
+            </button>
+
+            <form id="addMemberBox"
+                method="POST"
+                action="{{ route('group.add', $group->id) }}"
+                class="hidden">
+                @csrf
+
+                <div class="max-h-40 overflow-y-auto rounded-lg border bg-gray-50 p-3 mb-3 space-y-1">
+                    @php
+                        $availableFriends = $friends->filter(fn($f) => !$members->contains($f->id));
+                    @endphp
+
+                    @if($availableFriends->isEmpty())
+                        <p class="text-xs text-gray-500">
+                            Semua teman sudah menjadi anggota grup.
+                        </p>
+                    @else
+                        @foreach($availableFriends as $friend)
+                            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded-md">
+                                <input type="checkbox"
+                                    name="user_id[]"
+                                    value="{{ $friend->id }}"
+                                    class="accent-rose-500">
+                                <span>{{ $friend->name }}</span>
+                            </label>
+                        @endforeach
+                    @endif
+                </div>
 
                 <button
-                    onclick="document.getElementById('addMemberBox').classList.toggle('hidden')"
-                    class="w-full text-sm font-medium py-2 mb-3 border rounded-lg hover:bg-gray-50">
-                    + Tambah Anggota
+                    class="w-full bg-rose-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-rose-600 transition">
+                    Tambahkan
                 </button>
-
-                <form id="addMemberBox"
-                    method="POST"
-                    action="{{ route('group.add', $group->id) }}"
-                    class="hidden">
-                    @csrf
-
-                    <div class="max-h-40 overflow-y-auto rounded-lg border bg-gray-50 p-3 mb-3 space-y-1">
-
-                        @php
-                            $availableFriends = $friends->filter(fn($f) => !$members->contains($f->id));
-                        @endphp
-
-                        @if($availableFriends->isEmpty())
-                            <p class="text-xs text-gray-500">
-                                Semua teman sudah menjadi anggota grup.
-                            </p>
-                        @else
-                            @foreach($availableFriends as $friend)
-                                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-white px-2 py-1 rounded-md">
-                                    <input type="checkbox"
-                                        name="user_id[]"
-                                        value="{{ $friend->id }}"
-                                        class="accent-rose-500">
-                                    <span>{{ $friend->name }}</span>
-                                </label>
-                            @endforeach
-                        @endif
-
-                    </div>
-
-                    <button
-                        class="w-full bg-rose-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-rose-600 transition">
-                        Tambahkan
-                    </button>
-                </form>
-            </div>
-        @endif
+            </form>
+        </div>
 
         <!-- DAFTAR ANGGOTA -->
         <h3 class="font-semibold text-gray-700 mb-2">Anggota</h3>

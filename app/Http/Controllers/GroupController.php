@@ -121,7 +121,6 @@ class GroupController extends Controller
         }
 
         $group = Conversation::findOrFail($id);
-        $this->authorizeAdmin($group);
 
         foreach ($request->user_id as $userId) {
             $pivot = $group->users()
