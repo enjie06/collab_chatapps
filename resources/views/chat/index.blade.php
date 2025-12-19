@@ -53,7 +53,7 @@
             <div class="flex-1 overflow-y-auto">
                 
                 {{-- TAB: CHATS --}}
-                <div id="tab-chats" class="tab-content p-4 space-y-3">
+                <div id="tab-chats" class="tab-content p-4 space-y-3" data-chat-list>
                     @forelse($conversations as $conversation)
                         @php
                             $isGroup = $conversation->type === 'group';
@@ -462,6 +462,38 @@
                 }, 5000);
             });
         });
+    </script>
+
+    <script>
+        function refreshSidebarChats() {
+            fetch("{{ route('chat.index') }}", {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.text())
+            .then(html => {
+                // parse HTML response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // ambil tab chats dari response
+                const newChatList = doc.querySelector('[data-chat-list]');
+                const currentChatList = document.querySelector('[data-chat-list]');
+
+                if (newChatList && currentChatList) {
+                    currentChatList.innerHTML = newChatList.innerHTML;
+                }
+            })
+            .catch(err => console.error('Sidebar refresh error:', err));
+        }
+
+        // polling tiap 5 detik
+        setInterval(refreshSidebarChats, 5000);
+
+        // refresh setelah iframe load (habis kirim pesan)
+        document.getElementById('chatFrame')
+            ?.addEventListener('load', refreshSidebarChats);
     </script>
 
 </x-app-layout>
