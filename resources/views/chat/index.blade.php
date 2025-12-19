@@ -198,7 +198,7 @@
                     $hasUnread = $lastMsg && $lastMsg->user_id != auth()->id() && $myRead < $lastMsg->id;
 
                     // Untuk private
-                    $partner = !$isPrivate
+                    $partner = $isPrivate
                         ? $conversation->users->firstWhere('id', '!=', auth()->id())
                         : null;
                 @endphp
