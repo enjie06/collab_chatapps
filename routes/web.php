@@ -33,7 +33,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/{id}', [ChatController::class, 'show'])->name('chat.show');
     Route::post('/chat/{id}/send', [ChatController::class, 'sendMessage'])->name('chat.send');
-
+    // Routes untuk AJAX dynamic chat
+Route::get('/chat/{conversation}/messages', [ChatController::class, 'getMessages'])->name('chat.messages');
+Route::post('/chat/{conversation}/send', [ChatController::class, 'sendMessageAjax'])->name('chat.sendAjax');
     // Menambah teman
     Route::get('/friends', [\App\Http\Controllers\FriendController::class, 'index'])->name('friends.index');
     Route::post('/friends/send', [\App\Http\Controllers\FriendController::class, 'sendRequest'])->name('friends.send');

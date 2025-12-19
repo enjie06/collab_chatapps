@@ -175,7 +175,7 @@ class ChatController extends Controller
         ));
     }
 
-    // Kirim pesan baru
+    // Kirim pesan baru (untuk form biasa)
     public function sendMessage(Request $request, $id)
     {
         $me = Auth::id();
@@ -361,5 +361,115 @@ class ChatController extends Controller
         $fileName = $safeName . '_' . $originalName;
         
         return response()->download($filePath, $attachment->original_name);
+    }
+
+    // AJAX: Get messages untuk dynamic chat
+    public function getMessages(Conversation $conversation)
+    {
+        // Cek authorization
+        if (!$conversation->users->contains(auth()->id())) {
+            abort(403);
+        }
+
+        $pivot = $conversation->users->firstWhere('id', auth()->id())->pivot;
+
+        // Filter messages berdasarkan cleared_at dan deleted_at
+        $messages = $conversation->messages()
+            ->with('user')
+            ->when($pivot->last_cleared_at, fn($q) =>
+                $q->where('created_at', '>', $pivot->last_cleared_at)
+            )
+            ->when($pivot->deleted_at && $conversation->type === 'group', fn($q) =>
+                $q->where('created_at', '<=', $pivot->deleted_at)
+            )
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Tentukan nama dan avatar conversation
+        $name = $conversation->name;
+        $avatar = $conversation->avatar ? asset('storage/' . $conversation->avatar) : asset('images/default-group.png');
+
+        if ($conversation->type === 'private') {
+            $partner = $conversation->users->where('id', '!=', auth()->id())->first();
+            $name = $partner->name ?? 'User';
+            $avatar = $partner->avatar ? asset('storage/' . $partner->avatar) : asset('images/default-avatar.png');
+        }
+
+        return response()->json([
+            'success' => true,
+            'conversation' => [
+                'id' => $conversation->id,
+                'name' => $name,
+                'avatar' => $avatar,
+                'type' => $conversation->type
+            ],
+            'messages' => $messages
+        ]);
+    }
+
+    // AJAX: Send message untuk dynamic chat
+    public function sendMessageAjax(Request $request, Conversation $conversation)
+    {
+        $request->validate([
+            'content' => 'required|string|max:5000'
+        ]);
+
+        // Cek authorization
+        if (!$conversation->users->contains(auth()->id())) {
+            abort(403);
+        }
+
+        // Cek apakah user sudah keluar dari grup
+        if ($conversation->type === 'group') {
+            $pivot = $conversation->users->firstWhere('id', auth()->id())?->pivot;
+
+            if ($pivot && $pivot->deleted_at !== null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kamu sudah keluar dari grup ini.'
+                ], 403);
+            }
+        }
+
+        // Untuk private chat, cek friendship
+        if ($conversation->type === 'private') {
+            $otherUser = $conversation->users->where('id', '!=', auth()->id())->first();
+            $friendship = Friendship::between(auth()->id(), $otherUser->id)->first();
+
+            if (!$friendship || $friendship->status !== 'accepted' || $friendship->is_blocked) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesan tidak dapat dikirim.'
+                ], 403);
+            }
+        }
+
+        $message = $conversation->messages()->create([
+            'user_id' => auth()->id(),
+            'content' => $request->content,
+        ]);
+
+        // Broadcast event
+        broadcast(new MessageSent($message))->toOthers();
+
+        // Untuk private chat, munculkan kembali di sidebar jika pernah dihapus
+        if ($conversation->type === 'private') {
+            $otherUser = $conversation->users->where('id', '!=', auth()->id())->first();
+            
+            $conversation->users()->updateExistingPivot(auth()->id(), [
+                'deleted_at' => null,
+            ]);
+
+            if ($otherUser) {
+                $conversation->users()->updateExistingPivot($otherUser->id, [
+                    'deleted_at' => null,
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message->load('user')
+        ]);
     }
 }
