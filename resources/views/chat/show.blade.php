@@ -1,4 +1,4 @@
-<x-iframe-layout>
+<x-app-layout>
     <style>
         /* Image thumbnail hover effect */
         .img-thumbnail {
@@ -89,193 +89,155 @@
         </script>
     @endif
 
-<div class="w-full h-screen flex flex-col">
+    <div class="max-w-3xl mx-auto mt-2 flex flex-col h-[calc(100vh-110px)] space-y-2">
+
         <!-- Header Chat -->
-        <!-- Header Chat -->
-<div class="flex items-center justify-between bg-white border-b p-3 sticky top-0 z-10">
+        <div class="flex items-center justify-between bg-white border-b p-3 sticky top-0 z-10">
 
-    {{-- GANTI TOMBOL INI SAJA: --}}
-    <button onclick="closeChatOnly()" class="text-2xl text-rose-600 hover:text-rose-800 pr-2">←</button>
-    {{-- HAPUS: <a href="{{ route('chat.index') }}" class="text-2xl text-rose-600 hover:text-rose-800 pr-2">←</a> --}}
+            <a href="{{ route('chat.index') }}" class="text-2xl text-rose-600 hover:text-rose-800 pr-2">←</a>
 
-    {{-- === JIKA GRUP / BROADCAST === --}}
-    @if($isGroup || $isBroadcast)
-    <div class="flex items-center gap-3 flex-1">
-        <img src="{{ $conversation->avatar
-            ? asset('storage/'.$conversation->avatar)
-            : asset('images/default-group.png') }}"
-            class="w-10 h-10 rounded-full object-cover border">
+            {{-- === JIKA GRUP / BROADCAST === --}}
+            @if($isGroup || $isBroadcast)
+            <div class="flex items-center gap-3 flex-1">
+                <img src="{{ $conversation->avatar
+                    ? asset('storage/'.$conversation->avatar)
+                    : asset('images/default-group.png') }}"
+                    class="w-10 h-10 rounded-full object-cover border">
 
-        <div class="leading-tight">
-            <p class="font-semibold text-gray-800">
-                {{ $conversation->name }}
-            </p>
+                <div class="leading-tight">
+                    <p class="font-semibold text-gray-800">
+                        {{ $conversation->name }}
+                    </p>
 
-            @php
-                $activeMembers = $conversation->users->filter(
-                    fn($u) => is_null($u->pivot->deleted_at)
-                );
+                    @php
+                        $activeMembers = $conversation->users->filter(
+                            fn($u) => is_null($u->pivot->deleted_at)
+                        );
 
-                $names = $activeMembers->map(fn($u) =>
-                    $u->id === auth()->id()
-                        ? $u->name.' (You)'
-                        : $u->name
-                );
+                        $names = $activeMembers->map(fn($u) =>
+                            $u->id === auth()->id()
+                                ? $u->name.' (You)'
+                                : $u->name
+                        );
 
-                $namesSorted = $names->sort(fn($a, $b) =>
-                    str_contains($a, '(You)') <=> str_contains($b, '(You)')
-                );
-            @endphp
+                        $namesSorted = $names->sort(fn($a, $b) =>
+                            str_contains($a, '(You)') <=> str_contains($b, '(You)')
+                        );
+                    @endphp
 
-            <p class="text-xs text-gray-500">
-                {{ $namesSorted->implode(', ') }}
-            </p>
-        </div>
-    </div>
-
-    {{-- === JIKA PRIVATE === --}}
-    @else
-        <div class="flex items-center gap-3 flex-1">
-            <img src="{{ $otherUser?->avatar ? asset('storage/'.$otherUser->avatar) : asset('images/default-avatar.png') }}"
-                class="w-10 h-10 rounded-full object-cover border">
-
-            <div class="leading-tight">
-                <p class="font-semibold text-gray-800">{{ $otherUser->name }}</p>
-                <p class="text-xs {{ $otherUser->is_online ? 'text-green-600' : 'text-gray-400' }}">
-                    {{ $otherUser->is_online ? 'Online' : 'Offline' }}
-                </p>
+                    <p class="text-xs text-gray-500">
+                        {{ $namesSorted->implode(', ') }}
+                    </p>
+                </div>
             </div>
-        </div>
-    @endif
 
-    {{-- MENU --}}
-    <div class="relative">
-        <button id="menuToggle" class="text-xl px-2 text-gray-600 hover:text-gray-800">⋮</button>
-
-        <div id="menuDropdown"
-            class="hidden absolute right-0 mt-2 w-44 bg-white border rounded-lg shadow-lg p-3">
-
-            @if($isGroup)
-                <p class="font-semibold text-center">{{ $conversation->name }}</p>
-
-                <button
-                    onclick="window.location.href='{{ route('group.info', $conversation->id) }}'"
-                    class="block w-full text-left hover:text-rose-600 text-sm">
-                    Kelola Grup
-                </button>
-
-                {{-- Hapus Chat (hanya hapus chat milik kita) --}}
-                <form action="{{ route('chat.delete', $conversation->id) }}" method="POST">
-                    @csrf @method('DELETE')
-                    <button class="block w-full text-left hover:text-rose-600 text-sm">
-                        Hapus Chat
-                    </button>
-                </form>
-
-                {{-- Leave Group --}}
-                <form action="{{ route('group.leave', $conversation->id) }}" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button class="block w-full text-left hover:text-red-600 text-sm">
-                        Tinggalkan Grup
-                    </button>
-                </form>
-                
-            @elseif($isBroadcast)
-                <button
-                    onclick="window.location.href='{{ route('broadcast.info', $conversation->id) }}'"
-                    class="block w-full text-left hover:text-rose-600 text-sm">
-                    Kelola Broadcast
-                </button>
-            
+            {{-- === JIKA PRIVATE === --}}
             @else
-                <p class="font-semibold text-center">{{ $otherUser->name }}</p>
-                <p class="text-xs text-gray-500 text-center mb-2">{{ $otherUser->email }}</p>
+                <div class="flex items-center gap-3 flex-1">
+                    <img src="{{ $otherUser?->avatar ? asset('storage/'.$otherUser->avatar) : asset('images/default-avatar.png') }}"
+                        class="w-10 h-10 rounded-full object-cover border">
 
-                <button onclick="window.location.href='{{ route('user.profile', $otherUser->id) }}'"
-                    class="block text-left w-full hover:text-rose-600 text-sm">
-                    Lihat Profil
-                </button>                     
-
-                <form action="{{ route('chat.delete', $conversation->id) }}" 
-                    method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button class="block w-full text-left hover:text-rose-600 text-sm">
-                        Hapus Chat
-                    </button>
-                </form>
-
-                @php
-                    if ($isGroup) {
-                        // grup tidak pakai blokir
-                        $friendship = null;
-                        $isBlocked = false;
-                        $canBlock = false;
-                        $canUnblock = false;
-                    } else {
-                        $friendship = \App\Models\Friendship::between(auth()->id(), $otherUser->id)->first();
-                        $isBlocked = $friendship && $friendship->is_blocked;
-                        $canBlock = !$isBlocked;
-                        $canUnblock = $isBlocked && $friendship->blocked_by == auth()->id();
-                    }
-                @endphp
-
-                @if($canBlock)
-                    <form action="{{ route('friends.block', $otherUser->id) }}" method="POST">
-                        @csrf
-                        <button class="block w-full text-left hover:text-rose-600 text-sm">Blokir</button>
-                    </form>
-                @endif
-
-                @if($canUnblock)
-                    <form action="{{ route('friends.unblock', $otherUser->id) }}" method="POST">
-                        @csrf
-                        <button class="block w-full text-left hover:text-green-600 text-sm">Buka Blokir</button>
-                    </form>
-                @endif
+                    <div class="leading-tight">
+                        <p class="font-semibold text-gray-800">{{ $otherUser->name }}</p>
+                        <p class="text-xs {{ $otherUser->is_online ? 'text-green-600' : 'text-gray-400' }}">
+                            {{ $otherUser->is_online ? 'Online' : 'Offline' }}
+                        </p>
+                    </div>
+                </div>
             @endif
+
+            {{-- MENU --}}
+            <div class="relative">
+                <button id="menuToggle" class="text-xl px-2 text-gray-600 hover:text-gray-800">⋮</button>
+
+                <div id="menuDropdown"
+                    class="hidden absolute right-0 mt-2 w-44 bg-white border rounded-lg shadow-lg p-3">
+
+                    @if($isGroup)
+                        <p class="font-semibold text-center">{{ $conversation->name }}</p>
+
+                        <button
+                            onclick="window.location.href='{{ route('group.info', $conversation->id) }}'"
+                            class="block w-full text-left hover:text-rose-600 text-sm">
+                            Kelola Grup
+                        </button>
+
+                        {{-- Hapus Chat (hanya hapus chat milik kita) --}}
+                        <form action="{{ route('chat.delete', $conversation->id) }}" method="POST">
+                            @csrf @method('DELETE')
+                            <button class="block w-full text-left hover:text-rose-600 text-sm">
+                                Hapus Chat
+                            </button>
+                        </form>
+
+                        {{-- Leave Group --}}
+                        <form action="{{ route('group.leave', $conversation->id) }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button class="block w-full text-left hover:text-red-600 text-sm">
+                                Tinggalkan Grup
+                            </button>
+                        </form>
+                        
+                    @elseif($isBroadcast)
+                        <button
+                            onclick="window.location.href='{{ route('broadcast.info', $conversation->id) }}'"
+                            class="block w-full text-left hover:text-rose-600 text-sm">
+                            Kelola Broadcast
+                        </button>
+                    
+                    @else
+                        <p class="font-semibold text-center">{{ $otherUser->name }}</p>
+                        <p class="text-xs text-gray-500 text-center mb-2">{{ $otherUser->email }}</p>
+
+                        <button onclick="window.location.href='{{ route('user.profile', $otherUser->id) }}'"
+                            class="block text-left w-full hover:text-rose-600 text-sm">
+                            Lihat Profil
+                        </button>                     
+
+                        <form action="{{ route('chat.delete', $conversation->id) }}" 
+                            method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button class="block w-full text-left hover:text-rose-600 text-sm">
+                                Hapus Chat
+                            </button>
+                        </form>
+
+                        @php
+                            if ($isGroup) {
+                                // grup tidak pakai blokir
+                                $friendship = null;
+                                $isBlocked = false;
+                                $canBlock = false;
+                                $canUnblock = false;
+                            } else {
+                                $friendship = \App\Models\Friendship::between(auth()->id(), $otherUser->id)->first();
+                                $isBlocked = $friendship && $friendship->is_blocked;
+                                $canBlock = !$isBlocked;
+                                $canUnblock = $isBlocked && $friendship->blocked_by == auth()->id();
+                            }
+                        @endphp
+
+                        @if($canBlock)
+                            <form action="{{ route('friends.block', $otherUser->id) }}" method="POST">
+                                @csrf
+                                <button class="block w-full text-left hover:text-rose-600 text-sm">Blokir</button>
+                            </form>
+                        @endif
+
+                        @if($canUnblock)
+                            <form action="{{ route('friends.unblock', $otherUser->id) }}" method="POST">
+                                @csrf
+                                <button class="block w-full text-left hover:text-green-600 text-sm">Buka Blokir</button>
+                            </form>
+                        @endif
+                    @endif
+                </div>
+            </div>
+
+            <div id="typingIndicator" class="text-xs text-gray-500 px-3 py-1"></div>
         </div>
-    </div>
-
-    <div id="typingIndicator" class="text-xs text-gray-500 px-3 py-1"></div>
-</div>
-
-{{-- TAMBAHKAN SCRIPT INI DI BAWAH (sebelum </x-app-layout>) --}}
-<script>
-function closeChatOnly() {
-    // Jika di dalam iframe (dipakai di layout split)
-    if (window.parent !== window) {
-        // Coba beri tahu parent untuk menutup chat
-        try {
-            const parentDoc = window.parent.document;
-            
-            // Sembunyikan iframe
-            const iframe = parentDoc.getElementById('chatFrame');
-            if (iframe) {
-                iframe.classList.add('hidden');
-            }
-            
-            // Tampilkan empty state
-            const emptyState = parentDoc.getElementById('emptyState');
-            if (emptyState) {
-                emptyState.classList.remove('hidden');
-            }
-            
-            // Hapus status aktif dari semua chat di sidebar
-            parentDoc.querySelectorAll('.chat-room-item').forEach(item => {
-                item.classList.remove('active');
-            });
-        } catch (e) {
-            console.log('Tidak bisa mengakses parent, redirect ke chat index');
-            window.location.href = "{{ route('chat.index') }}";
-        }
-    } else {
-        // Jika standalone (mobile/direct access), redirect ke chat index
-        window.location.href = "{{ route('chat.index') }}";
-    }
-}
-</script>
 
         <!-- Chat Messages -->
         <div class="bg-white p-4 rounded-lg border h-[200vh] overflow-y-auto" id="chat-body">
@@ -972,4 +934,4 @@ function closeChatOnly() {
     });
 </script>
 
-</x-iframe-layout>
+</x-app-layout>
