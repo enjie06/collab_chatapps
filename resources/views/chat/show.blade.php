@@ -1,3 +1,14 @@
+@php
+    if (!function_exists('renderMentions')) {
+        function renderMentions($text, $currentUser = null) {
+            if (!$text) return '';
+
+            return preg_replace_callback('/@(\w+)/', function ($matches) {
+                return '<span class="text-blue-500 font-semibold">@'.$matches[1].'</span>';
+            }, e($text));
+        }
+    }
+@endphp
 <x-app-layout>
     <style>
         /* Image thumbnail hover effect */
