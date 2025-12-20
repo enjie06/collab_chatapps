@@ -197,6 +197,19 @@ class ChatController extends Controller
             }
         }
 
+        // === BROADCAST GUARD ===
+        if ($conversation->type === 'broadcast') {
+            $pivot = $conversation->users->firstWhere('id', $me)?->pivot;
+
+            if (
+                !$pivot ||
+                $pivot->role !== 'admin' ||
+                $pivot->deleted_at !== null
+            ) {
+                abort(403, 'Broadcast hanya bisa dikirim oleh admin.');
+            }
+        }
+
         // Ambil lawan bicara khusus private
         $otherUser = $conversation->type === 'private'
             ? $conversation->users->firstWhere('id', '!=', $me)
@@ -427,6 +440,22 @@ class ChatController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Kamu sudah keluar dari grup ini.'
+                ], 403);
+            }
+        }
+
+        // === BROADCAST GUARD ===
+        if ($conversation->type === 'broadcast') {
+            $pivot = $conversation->users->firstWhere('id', auth()->id())?->pivot;
+
+            if (
+                !$pivot ||
+                $pivot->role !== 'admin' ||
+                $pivot->deleted_at !== null
+            ) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Broadcast hanya bisa dikirim oleh admin.'
                 ], 403);
             }
         }
