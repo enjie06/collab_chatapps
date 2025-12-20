@@ -396,78 +396,76 @@
         <!-- Form kirim pesan -->
         @php
             $pivot = $conversation->users->firstWhere('id', auth()->id())?->pivot;
-            $isAdmin = $pivot?->role === 'admin';
-            $isLeft  = $isGroup && !is_null($pivot?->deleted_at);
+
+            $canSend =
+                ($conversation->type === 'private' && $isFriend)
+                || ($conversation->type === 'group' && !$isLeft)
+                || ($conversation->type === 'broadcast' && $pivot?->role === 'admin');
         @endphp
 
-        {{-- ===================== BROADCAST ===================== --}}
-        @if($isBroadcast)
+        @if($canSend)
+        <form action="{{ route('chat.send', $conversation->id) }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="relative flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
+            @csrf
 
-            @if($isAdmin)
-                <form action="{{ route('chat.send', $conversation->id) }}"
-                    method="POST"
-                    class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
-                    @csrf
-                    <textarea name="content"
-                        class="chatInput w-full border rounded-full px-4 py-2 text-sm"
-                        placeholder="Tulis pesan broadcast..."
-                        required></textarea>
-                    <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg">
-                        Kirim
-                    </button>
-                </form>
-            @else
-                <div class="text-center text-gray-500 text-sm italic py-3 border-t bg-white sticky bottom-0">
-                    Broadcast bersifat satu arah. Kamu hanya bisa membaca pesan.
+            <!-- REPLY -->
+            <input type="hidden" name="reply_to_id" id="replyToId">
+
+            <div id="replyPreview" class="hidden mb-2 p-2 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <p class="text-xs text-blue-600 font-semibold">Membalas pesan</p>
+                        <p id="replyContent" class="text-sm text-gray-700 truncate"></p>
+                    </div>
+                    <button type="button" onclick="cancelReply()">×</button>
                 </div>
-            @endif
+            </div>
 
-
-        {{-- ===================== GROUP ===================== --}}
-        @elseif($isGroup)
-
-            @if(!$isLeft)
-                <form action="{{ route('chat.send', $conversation->id) }}"
-                    method="POST"
-                    class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
-                    @csrf
-                    <textarea name="content"
-                        class="chatInput w-full border rounded-full px-4 py-2 text-sm"
-                        placeholder="Tulis pesan..."
-                        required></textarea>
-                    <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg">
-                        Kirim
-                    </button>
-                </form>
-            @else
-                <div class="text-center text-gray-500 text-sm italic py-3 border-t bg-white sticky bottom-0">
-                    Kamu telah keluar dari grup ini. Chat hanya dapat dibaca.
+            <!-- FILE PREVIEW -->
+            <div id="filePreview" class="hidden mb-2 p-3 bg-gray-100 rounded-lg border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span id="fileName" class="text-sm font-medium"></span>
+                        <p id="fileSize" class="text-xs text-gray-500"></p>
+                    </div>
+                    <button type="button" onclick="clearFile()">×</button>
                 </div>
-            @endif
 
+                <img id="imagePreview" class="hidden max-w-xs mt-2 rounded-lg shadow">
+                <video id="videoPreview" class="hidden max-w-xs mt-2 rounded-lg shadow" controls></video>
+                <div id="otherFilePreview" class="hidden mt-2 text-center">📄</div>
+            </div>
 
-        {{-- ===================== PRIVATE ===================== --}}
+            <div class="relative flex-1">
+                <textarea name="content"
+                    class="chatInput w-full border rounded-full px-4 py-2 text-sm resize-none"
+                    placeholder="Tulis pesan..."
+                    required></textarea>
+
+                <div id="mentionBox"
+                    class="hidden absolute left-0 bottom-full mb-1 w-72 bg-white border rounded-lg shadow-md max-h-40 overflow-y-auto text-sm z-50">
+                </div>
+            </div>
+
+            <label class="cursor-pointer bg-gray-200 w-[40px] h-[40px] rounded-lg hover:bg-gray-300 text-lg flex items-center justify-center">
+                📎
+                <input type="file" name="attachment" id="fileInput" class="hidden"
+                    accept="image/*,video/*,.pdf,.doc,.docx,.zip,.mp3,.wav,.m4a"
+                    onchange="previewFile(this)">
+            </label>
+
+            <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg hover:bg-rose-700 text-[14px]">
+                Kirim
+            </button>
+        </form>
         @else
-
-            @if($isFriend)
-                <form action="{{ route('chat.send', $conversation->id) }}"
-                    method="POST"
-                    class="flex items-center gap-2 p-2 border-t bg-white sticky bottom-0">
-                    @csrf
-                    <textarea name="content"
-                        class="chatInput w-full border rounded-full px-4 py-2 text-sm"
-                        placeholder="Tulis pesan..."
-                        required></textarea>
-                    <button class="bg-rose-600 text-white px-4 h-[40px] rounded-lg">
-                        Kirim
-                    </button>
-                </form>
-            @else
-                <div class="text-center text-gray-500 text-sm italic py-3 border-t bg-white sticky bottom-0">
-                    Kamu tidak dapat mengirim pesan di chat ini.
-                </div>
-            @endif
-
+        <div class="text-center text-gray-500 text-sm italic py-3 sticky bottom-0 bg-white border-t">
+            {{ $conversation->type === 'broadcast'
+                ? 'Broadcast bersifat satu arah. Kamu hanya bisa membaca pesan.'
+                : 'Kamu tidak dapat mengirim pesan di chat ini.' }}
+        </div>
         @endif
     </div>
 
